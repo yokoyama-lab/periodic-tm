@@ -132,3 +132,4 @@ lake build
 | `bennett_uncompute.py`, `bennett_fcu.py`, `copy_str.py` | Bennett 可逆化まわりの実験 |
 | `lean/` | Lean 4 / mathlib 機械化（lake プロジェクト） |
 | `themes/` | 卒研テーマのとっかかり集（各テーマの README・演習・実装） |
+| `research/` | 研究級課題4件の攻略ログ（証明できた定理と、詰まった軌跡の記録） |
