@@ -115,10 +115,13 @@ lake build
 
 ## 卒研テーマの例
 
-- 位数 n をネイティブに実現する単一機械モデルの設計と完全性証明（未解決問題）
-- 二対合分解の計算量解析（分解で得られる ι₁, ι₂ の効率）
-- Bennett 可逆化の Lean 4 機械化（Python プロトタイプ `bennett_*.py` を Lean に持ち上げる）
-- 周期的 Turing 機械のシミュレータ実装と可視化
+各テーマの「とっかかり」（問題設定・最初の一歩・動くコード）を
+[`themes/`](themes/) に用意した。
+
+- [位数 n をネイティブに実現する単一機械モデルの設計と完全性証明（未解決問題）](themes/01-native-order-n/)
+- [二対合分解の計算量解析（ベンチマーク同梱、実測は f 呼び出し 2n 回/評価）](themes/02-decomposition-complexity/)
+- [Bennett 可逆化の Lean 4 機械化（準備演習 `Exercises.lean` 同梱）](themes/03-bennett-lean/)
+- [周期的 Turing 機械のシミュレータ実装と可視化（動く最小実装同梱）](themes/04-simulator/)
 
 ## ディレクトリ構成
 
@@ -128,3 +131,4 @@ lake build
 | `preperiod.py` | 前周期付き分解 f = ι₁ ∘ ι₂ ∘ e のプロトタイプ |
 | `bennett_uncompute.py`, `bennett_fcu.py`, `copy_str.py` | Bennett 可逆化まわりの実験 |
 | `lean/` | Lean 4 / mathlib 機械化（lake プロジェクト） |
+| `themes/` | 卒研テーマのとっかかり集（各テーマの README・演習・実装） |
