@@ -17,6 +17,7 @@ Python プロトタイプ（`../../bennett_uncompute.py`, `../../bennett_fcu.py`
    （compute → copy → uncompute）の配置を確認する。
 3. `Exercises.lean` の `sorry` を上から順に埋める（易→難の順に並べてある。
    これは演習用ファイルで、本体のビルド対象には含まれていない）。
+   模範解答は `Solutions.lean`（まず自力で解いてから見ること）。
 
 ## マイルストーン
 
