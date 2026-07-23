@@ -1,4 +1,5 @@
 import FiniteOrderTM.Basic
+import FiniteOrderTM.LocallyFinite
 import FiniteOrderTM.Dihedral
 import FiniteOrderTM.Machine
 import FiniteOrderTM.MultiTape

@@ -24,6 +24,9 @@ O = (b, f(b), …, f^{ℓ-1}(b)) と長さ ℓ を得る。基点 b は O の数
 
 数値実験による確認: `locally_finite.py`（軌道長が非有界の f で
 ι² = id と f = ι₁∘ι₂ を大量サンプル検査、全て通過）。
+**Lean 機械化済み**: `lean/FiniteOrderTM/LocallyFinite.lean`
+（`locallyFinite_eq_two_involutions`。数学的核＝任意の点ごと周期的
+写像の二対合分解。sorry ゼロ、`OrderDividing` からの橋渡し系付き）。
 
 **系.** 計算可能な全単射で2対合の積に書けないものは、無限軌道を持つ。
 

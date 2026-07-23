@@ -32,6 +32,7 @@ Every theorem reports a subset of mathlib's standard axioms
 | File | Contents |
 |---|---|
 | `FiniteOrderTM/Basic.lean` | Effective two-involution decomposition of finite-order bijections (`finite_order_eq_two_involutions`) |
+| `FiniteOrderTM/LocallyFinite.lean` | Locally finite generalisation — every pointwise-periodic map is a product of two involutions (`locallyFinite_eq_two_involutions`; research note Theorem 4.1) |
 | `FiniteOrderTM/PrePeriod.lean` | Pre-period-one collapse `f = ι₁ ∘ ι₂ ∘ e` (`index_one_decomp`) |
 | `FiniteOrderTM/Machine.lean` | Single-tape (TM0) relational time-reversal: `FlipOf`, Lecerf reversal, inverse semantics, soundness; `writeHead` example |
 | `FiniteOrderTM/MultiTape.lean` | k-tape model over an arbitrary tape-index type, with permutation rules; `KFlipOf`, `KInvolutory`, soundness; `bankSwap` (iff) and the `chain` independence example |
