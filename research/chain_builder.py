@@ -132,7 +132,45 @@ def demo3_defeat_honest_reflector():
     print("demo3 単一要件の撃破: OK — 連結が確約 ι(f(x)) = f^-1(ι(x)) を破った")
 
 
+def demo4_defeat_chain_swapper():
+    """攻め筋2の核: 鎖を対で交換する型の候補 ι の撃破（定理 7.2 の残ギャップ）.
+
+    ι が鎖 A と B の逆向きアラインメント（A の k 番目 ↔ B の後ろから
+    k 番目）を確約したとする。敵対者は A の末尾を新鮮な点 y で延長する。
+    反転条件 ι(f(tail A)) = f^-1(ι(tail A)) = f^-1(head B) が成り立つには、
+    ι(y) が pred(head B) に一致しなければならないが、pred(head B) は
+    まだ未定義で敵対者の手中にある。ι は固定関数なので ι(y) の値は
+    延長前に決まっており（確約）、敵対者は観測済みの ι の出力を避けて
+    pred(head B) を選べばよい（06 ノートの「観測済み出力を避ける競走」）。"""
+    cb = ChainBuilder()
+    A = cb.new_chain(4)                     # 0..3
+    B = cb.new_chain(4)                     # 4..7
+    iota = {A[k]: B[len(B) - 1 - k] for k in range(4)}
+    iota.update({v: k for k, v in iota.items()})     # 対合として閉じる
+
+    # 候補 ι の「延長点での値」も固定関数として確約済み（値は何であれ
+    # 敵対者の観測対象）。ここでは最悪ケースとして、ι が敵対者の直後の
+    # 新鮮値を言い当てようとする戦略を採ったとする。
+    predicted = cb.next_fresh + 1
+    y = cb.fresh()
+    cb._set(A[-1], y)                       # A の末尾を y で延長
+    iota[y] = predicted
+
+    observed = set(iota.values())           # 敵対者が観測した ι の出力全体
+    u = cb.fresh()
+    while u in observed:                    # 観測済み出力を避けて選ぶ
+        u = cb.fresh()
+    cb._set(u, B[0])                        # pred(head B) := u
+
+    # 反転条件の検査: ι(f(tail A)) = f^-1(ι(tail A)) か？
+    lhs = iota[cb.succ[A[-1]]]              # ι(y) — 確約済みの値
+    rhs = cb.pred[iota[A[-1]]]              # f^-1(head B) = u — 敵対者の選択
+    assert lhs != rhs
+    print("demo4 対交換型の撃破: OK — 観測済み出力を避けた選択が確約を破った")
+
+
 if __name__ == "__main__":
     demo1_totality()
     demo2_realization()
     demo3_defeat_honest_reflector()
+    demo4_defeat_chain_swapper()
