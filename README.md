@@ -112,6 +112,11 @@ lake build
 - **Turing 機械・可逆回路の形式検証**
   - Y. Forster et al., *Verified Programming of Turing Machines in Coq* (CPP 2020)
   - M. Amy et al., *Verified Compilation of Space-Efficient Reversible Circuits* (CAV 2017)
+- **計算可能置換群（`research/` の未解決問題の系譜）**
+  - G. Higman, *Transversals and conjugacy in the group of recursive
+    permutations* (Groups—Canberra 1989, Springer LNM 1456, 1990, pp. 142–160)
+    — 電子版は購読外のため**図書館の文献複写（ILL）で取り寄せ済み**。
+    複写物の閲覧を希望する場合は指導教員（横山）に連絡すること。
 
 ## 卒研テーマの例
 
