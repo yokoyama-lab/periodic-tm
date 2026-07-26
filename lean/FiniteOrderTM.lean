@@ -18,3 +18,4 @@ import FiniteOrderTM.CopyMultiK
 import FiniteOrderTM.IOConvention
 import FiniteOrderTM.IOConventionInstance
 import FiniteOrderTM.NoGo
+import FiniteOrderTM.TwoPointCore
