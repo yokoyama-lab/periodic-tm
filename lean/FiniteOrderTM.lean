@@ -2,6 +2,7 @@ import FiniteOrderTM.Basic
 import FiniteOrderTM.LocallyFinite
 import FiniteOrderTM.Dihedral
 import FiniteOrderTM.Machine
+import FiniteOrderTM.Involutory
 import FiniteOrderTM.MultiTape
 import FiniteOrderTM.PrePeriod
 import FiniteOrderTM.Compose
