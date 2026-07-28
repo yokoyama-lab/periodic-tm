@@ -18,5 +18,6 @@ import FiniteOrderTM.CopyMultiFold
 import FiniteOrderTM.CopyMultiK
 import FiniteOrderTM.IOConvention
 import FiniteOrderTM.IOConventionInstance
+import FiniteOrderTM.InvolutoryString
 import FiniteOrderTM.NoGo
 import FiniteOrderTM.TwoPointCore
