@@ -1,5 +1,6 @@
 import FiniteOrderTM.Basic
 import FiniteOrderTM.LocallyFinite
+import FiniteOrderTM.InvComp
 import FiniteOrderTM.Dihedral
 import FiniteOrderTM.Machine
 import FiniteOrderTM.Involutory
@@ -19,5 +20,6 @@ import FiniteOrderTM.CopyMultiK
 import FiniteOrderTM.IOConvention
 import FiniteOrderTM.IOConventionInstance
 import FiniteOrderTM.InvolutoryString
+import FiniteOrderTM.InvolutoryTransport
 import FiniteOrderTM.NoGo
 import FiniteOrderTM.TwoPointCore
