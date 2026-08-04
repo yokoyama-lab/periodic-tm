@@ -21,5 +21,6 @@ import FiniteOrderTM.IOConvention
 import FiniteOrderTM.IOConventionInstance
 import FiniteOrderTM.InvolutoryString
 import FiniteOrderTM.InvolutoryTransport
+import FiniteOrderTM.InvolutoryBennett
 import FiniteOrderTM.NoGo
 import FiniteOrderTM.TwoPointCore
