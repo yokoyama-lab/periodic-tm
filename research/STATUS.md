@@ -24,6 +24,10 @@
 | 予想 13.2 | 問C は否定的 | 3 [予想] | 構成方針のみ |
 | 予想 1.0 | n ≥ 3 の三条件不可能性 | 3 [予想] | 証拠3件と証明計画のみ |
 | Higman 帰結（G 非 strongly real） | 定理 3.7(ii) の m=1, n=−1 | 文献 | 原典精読済み。帰結の導出（4行の代数）は層2 |
+| コンパイラ正当性 | compile_correct / involutive₁₂ / spec | **1 [Lean済]** | `InvComp.lean`（深い埋め込み・Perm 着地） |
+| ITM 1マス完全性 | writeHead iff・completenessGoal_oneCell | **1 [Lean済]** | `Involutory.lean` |
+| 文字列橋渡し | StringInvolutory・閉包(a)・applyHead 橋 | **1 [Lean済]** | `InvolutoryString.lean` |
+| KMachine⇔TM0 輸送 | 双模倣 ofK/toK・共役合成の構文的対合性 | **1 [Lean済]** | `InvolutoryTransport.lean` |
 
 ## 影響範囲の注記
 
