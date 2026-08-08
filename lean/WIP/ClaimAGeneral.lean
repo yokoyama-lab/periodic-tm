@@ -182,12 +182,46 @@ theorem k1_succ_le_orbit1 {N ℓ : ℕ} [NeZero N] (s : AdvState)
 
 /-! ## 方向別の主定理（作業中） -/
 
-/-- (⇒) 必要性: 別軌道完成が存在すれば式側の窓に約数が入る。
-証人 m := 1 の軌道長。4 条件のうち m ∣ ℓ と非交差勘定は leaf 済み。 -/
+/-- 各要素が 1 以上のリストは、長さ ≤ 総和。 -/
+theorem length_le_sum {l : List ℕ} (h : ∀ j ∈ l, 1 ≤ j) :
+    l.length ≤ l.sum := by
+  induction l with
+  | nil => simp
+  | cons a t ih =>
+    simp only [List.length_cons, List.sum_cons]
+    have ha := h a (List.mem_cons.mpr (Or.inl rfl))
+    have ht := ih fun j hj => h j (List.mem_cons.mpr (Or.inr hj))
+    omega
+
+/-- **(⇒) の簡約**: 領域内では式側は常に成立する。`q < k₁*` は
+`¬Kills`＝「窓 `[q+1, N−ℓ]` に `ℓ` の約数 `m` が存在」を与え、その
+`m ≥ q+1` は `max(k₁+1, q+r+2−ℓ)` 以上（`k₁ ≤ q`、`r ≤ q ≤ ℓ−3`）。
+ゆえに主張Aの (⇒) 方向は完成の存在を使わずに出る（形式化が
+紙の証明より短い道を見つけた例 — 紙は 1 の軌道長を経由していた）。 -/
+theorem inRegion_formulaSide {N ℓ : ℕ} (s : AdvState)
+    (hfit : s.Fits N) (hreg : InLowerRegion N ℓ s) (hℓ : 3 ≤ ℓ) :
+    FormulaSide N ℓ s := by
+  unfold InLowerRegion at hreg
+  have hq2 : s.q < ℓ - 2 := lt_of_lt_of_le hreg (min_le_left _ _)
+  have hqk : s.q < PeriodicTM.TwoPointCore.k1Star N ℓ :=
+    lt_of_lt_of_le hreg (min_le_right _ _)
+  have hnk := PeriodicTM.TwoPointCore.not_kills_of_lt_k1Star hqk
+  unfold PeriodicTM.TwoPointCore.Kills at hnk
+  push_neg at hnk
+  obtain ⟨m, hmℓ, hmq, hmdvd, hmN⟩ := hnk
+  have hrq : s.r ≤ s.q := by
+    have h1 : s.strays.length ≤ s.strays.sum := length_le_sum hfit.1
+    unfold AdvState.q AdvState.r
+    omega
+  have hk1 : s.k1 ≤ s.q := by unfold AdvState.q; omega
+  refine ⟨m, Finset.mem_range.mpr (by omega), hmdvd, ?_, hmN⟩
+  exact max_le (by omega) (by omega)
+
+/-- (⇒) 必要性（系）: 領域内なら完成の存在に依らず式側が成立。 -/
 theorem completion_to_formula {N ℓ : ℕ} [NeZero N] (s : AdvState)
     (hfit : s.Fits N) (hreg : InLowerRegion N ℓ s) (hℓ : 3 ≤ ℓ)
-    (h : CompletionSide N ℓ s) : FormulaSide N ℓ s := by
-  sorry
+    (_h : CompletionSide N ℓ s) : FormulaSide N ℓ s :=
+  inRegion_formulaSide s hfit hreg hℓ
 
 /-- (⇐) 十分性: 窓に約数 m があれば別軌道完成をパッキングで構成する。
 research/09 の (⇐) の機械化。アトミック性の障害は領域条件
