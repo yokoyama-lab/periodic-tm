@@ -298,6 +298,49 @@ theorem strayBlocks_length_map :
     simp only [strayBlocks, List.map_cons, List.length_range',
       strayBlocks_length_map (next + 1 + j) rest]
 
+/-- strayBlocks の全頂点は `[next, next + Σ(jᵢ+1))` に入る。 -/
+theorem strayBlocks_mem_bound (l : List ℕ) :
+    ∀ (next : ℕ), ∀ b ∈ strayBlocks next l, ∀ x ∈ b,
+      next ≤ x ∧ x < next + (l.sum + l.length) := by
+  induction l with
+  | nil => intro next b hb; simp [strayBlocks] at hb
+  | cons j rest ih =>
+    intro next b hb x hx
+    simp only [strayBlocks, List.mem_cons] at hb
+    rcases hb with rfl | hb
+    · have := List.mem_range'_1.mp hx
+      simp only [List.sum_cons, List.length_cons]
+      omega
+    · have := ih (next + 1 + j) b hb x hx
+      simp only [List.sum_cons, List.length_cons]
+      omega
+
+/-- 各ブロックは Nodup（連続区間だから）。 -/
+theorem strayBlocks_nodup (l : List ℕ) :
+    ∀ (next : ℕ), ∀ b ∈ strayBlocks next l, b.Nodup := by
+  induction l with
+  | nil => intro next b hb; simp [strayBlocks] at hb
+  | cons j rest ih =>
+    intro next b hb
+    simp only [strayBlocks, List.mem_cons] at hb
+    rcases hb with rfl | hb
+    · exact List.nodup_range'
+    · exact ih (next + 1 + j) b hb
+
+/-- ブロック同士は要素を共有しない（区間が前から順に切られるから）。 -/
+theorem strayBlocks_pairwise (l : List ℕ) :
+    ∀ (next : ℕ),
+      (strayBlocks next l).Pairwise (fun b c => ∀ x ∈ b, x ∉ c) := by
+  induction l with
+  | nil => intro next; simp [strayBlocks]
+  | cons j rest ih =>
+    intro next
+    refine List.Pairwise.cons ?_ (ih (next + 1 + j))
+    intro c hc x hx hxc
+    have h1 := List.mem_range'_1.mp hx
+    have h2 := (strayBlocks_mem_bound rest (next + 1 + j) c hc x hxc).1
+    omega
+
 /-- 0 側サイクルの頂点列: `0`、P₀ の新頂点、bin0 の迷いブロック、
 未開示点での充填（長さ ℓ に合わせる）。 -/
 def cycle0Verts (s : AdvState) (b0 : List (List ℕ)) (fill0 : List ℕ) : List ℕ :=
