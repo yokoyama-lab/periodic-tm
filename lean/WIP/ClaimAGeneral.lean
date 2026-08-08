@@ -350,6 +350,98 @@ def cycle0Verts (s : AdvState) (b0 : List (List ℕ)) (fill0 : List ℕ) : List 
 def cycle1Verts (s : AdvState) (b1 : List (List ℕ)) (fill1 : List ℕ) : List ℕ :=
   (1 :: List.range' (2 + s.k0) s.k1) ++ b1.flatten ++ fill1
 
+/-- b が状態のブロック由来なら、その頂点は `[2+k₀+k₁, vertexCount)`。 -/
+theorem blocks_mem_bound (s : AdvState) {b : List ℕ} (hb : b ∈ s.blocks)
+    {x : ℕ} (hx : x ∈ b) :
+    2 + s.k0 + s.k1 ≤ x ∧ x < s.vertexCount := by
+  have := strayBlocks_mem_bound s.strays (2 + s.k0 + s.k1) b hb x hx
+  unfold AdvState.vertexCount
+  omega
+
+/-- サイクル 0 の頂点列は Nodup: 部品の値域が
+`{0} ∪ [2, 2+k₀)` ／ `[2+k₀+k₁, vc)` ／ `[vc, ·)` と階層化されるから。 -/
+theorem cycle0Verts_nodup (s : AdvState) (b0 : List (List ℕ)) (fill0 : List ℕ)
+    (hbmem : ∀ b ∈ b0, b ∈ s.blocks) (hbnd : b0.Pairwise List.Disjoint)
+    (hbdup : ∀ b ∈ b0, b.Nodup)
+    (hfnd : fill0.Nodup) (hflo : ∀ x ∈ fill0, s.vertexCount ≤ x) :
+    (cycle0Verts s b0 fill0).Nodup := by
+  have hbx : ∀ b ∈ b0, ∀ x ∈ b, 2 + s.k0 + s.k1 ≤ x ∧ x < s.vertexCount :=
+    fun b hb x hx => blocks_mem_bound s (hbmem b hb) hx
+  have hflat : ∀ x ∈ b0.flatten, 2 + s.k0 + s.k1 ≤ x ∧ x < s.vertexCount := by
+    intro x hx
+    obtain ⟨b, hb, hxb⟩ := List.mem_flatten.mp hx
+    exact hbx b hb x hxb
+  unfold cycle0Verts
+  rw [List.cons_append]
+  refine List.nodup_cons.mpr ⟨?_, ?_⟩
+  · intro h
+    rcases List.mem_append.mp h with h | h
+    · rcases List.mem_append.mp h with h | h
+      · have := (List.mem_range'_1.mp h).1
+        omega
+      · have := (hflat 0 h).1
+        omega
+    · have h1 := hflo 0 h
+      have h2 : 2 ≤ s.vertexCount := by unfold AdvState.vertexCount; omega
+      omega
+  · refine List.Nodup.append
+      (List.Nodup.append List.nodup_range'
+        (List.nodup_flatten.mpr ⟨hbdup, hbnd⟩) ?_) hfnd ?_
+    · intro x hx hx'
+      have h1 := List.mem_range'_1.mp hx
+      have h2 := (hflat x hx').1
+      omega
+    · intro x hx hx'
+      have h2 := hflo x hx'
+      rcases List.mem_append.mp hx with h | h
+      · have h1 := List.mem_range'_1.mp h
+        have h3 : 2 + s.k0 ≤ s.vertexCount := by
+          unfold AdvState.vertexCount; omega
+        omega
+      · have := (hflat x h).2
+        omega
+
+/-- サイクル 1 の頂点列は Nodup（cycle0 と同型。頭部の値域は
+`{1} ∪ [2+k₀, 2+k₀+k₁)`）。 -/
+theorem cycle1Verts_nodup (s : AdvState) (b1 : List (List ℕ)) (fill1 : List ℕ)
+    (hbmem : ∀ b ∈ b1, b ∈ s.blocks) (hbnd : b1.Pairwise List.Disjoint)
+    (hbdup : ∀ b ∈ b1, b.Nodup)
+    (hfnd : fill1.Nodup) (hflo : ∀ x ∈ fill1, s.vertexCount ≤ x) :
+    (cycle1Verts s b1 fill1).Nodup := by
+  have hflat : ∀ x ∈ b1.flatten, 2 + s.k0 + s.k1 ≤ x ∧ x < s.vertexCount := by
+    intro x hx
+    obtain ⟨b, hb, hxb⟩ := List.mem_flatten.mp hx
+    exact blocks_mem_bound s (hbmem b hb) hxb
+  unfold cycle1Verts
+  rw [List.cons_append]
+  refine List.nodup_cons.mpr ⟨?_, ?_⟩
+  · intro h
+    rcases List.mem_append.mp h with h | h
+    · rcases List.mem_append.mp h with h | h
+      · have := (List.mem_range'_1.mp h).1
+        omega
+      · have := (hflat 1 h).1
+        omega
+    · have h1 := hflo 1 h
+      have h2 : 2 ≤ s.vertexCount := by unfold AdvState.vertexCount; omega
+      omega
+  · refine List.Nodup.append
+      (List.Nodup.append List.nodup_range'
+        (List.nodup_flatten.mpr ⟨hbdup, hbnd⟩) ?_) hfnd ?_
+    · intro x hx hx'
+      have h1 := List.mem_range'_1.mp hx
+      have h2 := (hflat x hx').1
+      omega
+    · intro x hx hx'
+      have h2 := hflo x hx'
+      rcases List.mem_append.mp hx with h | h
+      · have h1 := List.mem_range'_1.mp h
+        have h3 : 2 + s.k0 + s.k1 ≤ s.vertexCount := by
+          unfold AdvState.vertexCount; omega
+        omega
+      · have := (hflat x h).2
+        omega
+
 /-- (⇐) の完成の構成: 2 つのサイクルの `formPerm` の積。
 `b0 ++ b1` は `s.blocks` の置換（`two_bin_pack` の出力）、
 `fill0 ++ fill1` は未開示点 `[vertexCount, N)` の分割。
