@@ -28,6 +28,7 @@
 | ITM 1マス完全性 | writeHead iff・completenessGoal_oneCell | **1 [Lean済]** | `Involutory.lean` |
 | 文字列橋渡し | StringInvolutory・閉包(a)・applyHead 橋 | **1 [Lean済]** | `InvolutoryString.lean` |
 | KMachine⇔TM0 輸送 | 双模倣 ofK/toK・共役合成の構文的対合性 | **1 [Lean済]** | `InvolutoryTransport.lean` |
+| 補題 9.7 主張A の定式化＋有界検証 | 式側・全数側を可判定述語として定式化。領域内 (N6ℓ4 の4状態＋N5ℓ3) で両側一致、領域外の既知反例 (N6ℓ4, strays=[1,1]) で式≠全数を再現 | **1 [Lean済]**（有界） | `TwoPointClaimA.lean`（記号・root取込）＋ `TwoPointClaimACert.lean`（native_decide・root外、`lake env lean` で検査）。一般証明（パッキング論法）は未着手 |
 
 ## 影響範囲の注記
 

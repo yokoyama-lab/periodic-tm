@@ -26,3 +26,4 @@ import FiniteOrderTM.HistoryMachine
 import FiniteOrderTM.InvolutoryAssembly
 import FiniteOrderTM.NoGo
 import FiniteOrderTM.TwoPointCore
+import FiniteOrderTM.TwoPointClaimA
