@@ -61,4 +61,59 @@ theorem region_agree_N5_l3 :
       CompletionSide 5 3 (.mk 0 0 []) := by
   native_decide
 
+/-! ## Region sweep: ALL in-region states with N ≤ 8
+
+The enumeration mirrors the python sweep of claimA_check.py
+(`stray_partitions`, the `k₀`/`k₁` ranges, the `Fits` skip), and the
+state count is cross-checked against the python enumeration: 26 states
+for `N ≤ 8` (the full python sweep has 70 for `N ≤ 10`; the
+`N ∈ {9, 10}` tail enumerates `Perm (Fin N)` with up to `10! = 3.6M`
+elements per state, which wants a backtracking decision procedure
+instead of `Fintype` enumeration — left for a later iteration). -/
+
+/-- Partitions as non-increasing part lists with parts `≤ mx` and total
+`≤ rest` (python `stray_partitions.gen`), driven by structural fuel so
+that the definition is primitive recursive.  `strayPartitions rest mx`
+uses `fuel = rest`, which suffices since every part is `≥ 1`. -/
+def strayPartitionsF : ℕ → ℕ → ℕ → List (List ℕ)
+  | 0, _, _ => [[]]
+  | fuel + 1, rest, mx =>
+      ([] : List ℕ) ::
+        (List.range' 1 (min rest mx)).flatMap fun first =>
+          (strayPartitionsF fuel (rest - first) first).map (first :: ·)
+
+def strayPartitions (rest mx : ℕ) : List (List ℕ) :=
+  strayPartitionsF rest rest mx
+
+/-- The state list of the python sweep for given `N`, `ℓ`: all
+`(k₀, k₁, strays)` with `k₀ + k₁ ≤ ℓ − 2`, stray budget
+`ℓ − 2 − k₀ − k₁`, restricted to well-formed (`Fits N`) states in the
+lower-bound region. -/
+def inRegionStates (N ℓ : ℕ) : List AdvState :=
+  ((List.range (ℓ - 1)).flatMap fun k0 =>
+    (List.range (ℓ - 1 - k0)).flatMap fun k1 =>
+      (strayPartitions (ℓ - 2 - k0 - k1) (ℓ - 2 - k0 - k1)).map
+        fun st => AdvState.mk k0 k1 st).filter
+    fun s => decide (s.Fits N) && decide (InLowerRegion N ℓ s)
+
+/-- Cross-check of the enumeration against python: exactly 26 in-region
+states with `N ≤ 8` (claimA_check.py restricted to `range(l+1, 9)`). -/
+theorem region_state_count_N8 :
+    (([3, 4, 5, 6] : List ℕ).flatMap fun ℓ =>
+      (List.range (8 - ℓ)).flatMap fun d =>
+        inRegionStates (ℓ + d + 1) ℓ).length = 26 := by
+  native_decide
+
+/-- **Certificate (native_decide): Claim A holds on EVERY in-region
+state with `N ≤ 8`** — both sides are TRUE (hence the claimed
+equivalence) on all 26 states.  Lean counterpart of python's
+`lower-bound region OK=…, BAD=0` for this range, now with the
+completion side exhaustive over `Perm (Fin N)` rather than a
+backtracking search. -/
+theorem region_sweep_N8 :
+    ∀ ℓ ∈ ([3, 4, 5, 6] : List ℕ), ∀ d ∈ List.range (8 - ℓ),
+      ∀ s ∈ inRegionStates (ℓ + d + 1) ℓ,
+        FormulaSide (ℓ + d + 1) ℓ s ∧ CompletionSide (ℓ + d + 1) ℓ s := by
+  native_decide
+
 end PeriodicTM.ClaimA
