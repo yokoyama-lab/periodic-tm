@@ -61,6 +61,32 @@ theorem orbit_disjoint {N : ℕ} (f : Perm (Fin N)) {a b : Fin N}
   simp only [Finset.mem_filter, Finset.mem_univ, true_and] at ha hb
   exact hab (ha.trans hb.symm)
 
+/-- (⇒) の易しい2条件: 別軌道完成 `f` における 1 の軌道長 `m` は
+`ℓ` を割り（`orbit_card_dvd`）、`m ≤ N − ℓ`（0 の軌道との非交差勘定）。
+残る `k₁ + 1 ≤ m` は P₁ の頂点追跡、`q + r + 2 − ℓ ≤ m` は再パッキング
+論法（f 自身では第3サイクルに迷いパスが居るかもしれないため、窓に入る
+別の約数への詰め替えが要る）— いずれも後続。 -/
+theorem orbit1_dvd_and_le {N ℓ : ℕ} [NeZero N] (s : AdvState)
+    (f : Perm (Fin N)) (hcomp : IsCompletion N ℓ s f)
+    (hdiff : ¬ f.SameCycle 0 1) :
+    #{y | f.SameCycle 1 y} ∣ ℓ ∧ #{y | f.SameCycle 1 y} ≤ N - ℓ := by
+  obtain ⟨hpow, hcard0, _⟩ := hcomp
+  refine ⟨orbit_card_dvd f hpow 1, ?_⟩
+  have hdisj := orbit_disjoint f hdiff
+  have hunion :
+      #(({y | f.SameCycle 0 y} : Finset (Fin N)) ∪
+          ({y | f.SameCycle 1 y} : Finset (Fin N)))
+        = ℓ + #{y | f.SameCycle 1 y} := by
+    rw [Finset.card_union_of_disjoint hdisj, hcard0]
+  have hle :
+      #(({y | f.SameCycle 0 y} : Finset (Fin N)) ∪
+          ({y | f.SameCycle 1 y} : Finset (Fin N))) ≤ N := by
+    calc #(({y | f.SameCycle 0 y} : Finset (Fin N)) ∪
+          ({y | f.SameCycle 1 y} : Finset (Fin N)))
+        ≤ #(Finset.univ : Finset (Fin N)) := Finset.card_le_univ _
+      _ = N := by simp
+  omega
+
 /-! ## 方向別の主定理（作業中） -/
 
 /-- (⇒) 必要性: 別軌道完成が存在すれば式側の窓に約数が入る。
