@@ -87,6 +87,99 @@ theorem orbit1_dvd_and_le {N ℓ : ℕ} [NeZero N] (s : AdvState)
       _ = N := by simp
   omega
 
+/-! ### P₁ 頂点の軌道追跡（`k₁ + 1 ≤ m` 用） -/
+
+/-- `pathEdges` の第 `i` 辺の形。 -/
+theorem pathEdges_mem {a next e i : ℕ} (hi : i < e) :
+    ((if i = 0 then a else next + i - 1), next + i) ∈ pathEdges a next e :=
+  List.mem_map_of_mem (List.mem_range.mpr hi)
+
+/-- 完成 `f` がパスの辺を尊重するなら、パスの新頂点はすべて起点と同軌道。 -/
+theorem sameCycle_path {N : ℕ} [NeZero N] (f : Perm (Fin N)) {a next e : ℕ}
+    (hext : ∀ p ∈ pathEdges a next e,
+      f (Fin.ofNat N p.1) = Fin.ofNat N p.2) :
+    ∀ i, i < e → f.SameCycle (Fin.ofNat N a) (Fin.ofNat N (next + i)) := by
+  intro i
+  induction i with
+  | zero =>
+    intro h0
+    have he := hext _ (pathEdges_mem (a := a) (next := next) h0)
+    rw [if_pos rfl] at he
+    exact ⟨1, by simpa using he⟩
+  | succ i ih =>
+    intro hsi
+    have he := hext _ (pathEdges_mem (a := a) (next := next) hsi)
+    rw [if_neg (by omega : ¬ i + 1 = 0)] at he
+    have h1 : next + (i + 1) - 1 = next + i := by omega
+    rw [h1] at he
+    exact (ih (by omega)).trans ⟨1, by simpa using he⟩
+
+/-- `Fin.ofNat N 1 = 1`（`N ≥ 2` のとき）。 -/
+theorem ofNat_one_eq_one {N : ℕ} [NeZero N] (hN : 2 ≤ N) :
+    (Fin.ofNat N 1 : Fin N) = 1 := by
+  ext
+  simp [Fin.ofNat, Fin.val_one', Nat.mod_eq_of_lt (by omega : 1 < N)]
+
+/-- (⇒) の第3条件: P₁ の `k₁ + 1` 頂点（`1` と新頂点 `k₁` 個）は
+相異なり、すべて `1` の軌道に入る。ゆえに `k₁ + 1 ≤ m`。 -/
+theorem k1_succ_le_orbit1 {N ℓ : ℕ} [NeZero N] (s : AdvState)
+    (hfit : s.Fits N) (f : Perm (Fin N)) (hcomp : IsCompletion N ℓ s f) :
+    s.k1 + 1 ≤ #{y | f.SameCycle 1 y} := by
+  classical
+  have hvc := hfit.2
+  unfold AdvState.vertexCount at hvc
+  have hN : 2 ≤ N := by omega
+  -- P₁ の辺は s.edges に入る
+  have hext1 : ∀ p ∈ pathEdges 1 (2 + s.k0) s.k1,
+      f (Fin.ofNat N p.1) = Fin.ofNat N p.2 := by
+    intro p hp
+    exact hcomp.2.2 p (by
+      unfold AdvState.edges
+      exact List.mem_append.mpr (Or.inl (List.mem_append.mpr (Or.inr hp))))
+  -- 頂点リストとその性質
+  have hlt : ∀ x ∈ (1 :: List.range' (2 + s.k0) s.k1), x < N := by
+    intro x hx
+    rcases List.mem_cons.mp hx with rfl | hx'
+    · omega
+    · have := (List.mem_range'_1.mp hx')
+      omega
+  have hnodup0 : ((1 : ℕ) :: List.range' (2 + s.k0) s.k1).Nodup := by
+    refine List.nodup_cons.mpr ⟨?_, List.nodup_range'⟩
+    intro hmem
+    have := (List.mem_range'_1.mp hmem).1
+    omega
+  have hnodup : (((1 : ℕ) :: List.range' (2 + s.k0) s.k1).map
+      (Fin.ofNat N)).Nodup := by
+    refine List.Nodup.map_on ?_ hnodup0
+    intro x hx y hy hxy
+    have hxN := hlt x hx
+    have hyN := hlt y hy
+    have hval : x % N = y % N := by
+      have := congrArg Fin.val hxy
+      simpa [Fin.ofNat] using this
+    rwa [Nat.mod_eq_of_lt hxN, Nat.mod_eq_of_lt hyN] at hval
+  -- 全頂点が 1 の軌道に入る
+  have hsub : ∀ v ∈ (((1 : ℕ) :: List.range' (2 + s.k0) s.k1).map
+      (Fin.ofNat N)).toFinset, v ∈ ({y | f.SameCycle 1 y} : Finset (Fin N)) := by
+    intro v hv
+    simp only [List.mem_toFinset, List.mem_map] at hv
+    obtain ⟨x, hx, rfl⟩ := hv
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and]
+    rcases List.mem_cons.mp hx with rfl | hx'
+    · rw [ofNat_one_eq_one hN]
+    · obtain ⟨hx1, hx2⟩ := List.mem_range'_1.mp hx'
+      have hpath := sameCycle_path f hext1 (x - (2 + s.k0)) (by omega)
+      rw [show 2 + s.k0 + (x - (2 + s.k0)) = x by omega,
+        ofNat_one_eq_one hN] at hpath
+      exact hpath
+  -- カード勘定
+  calc s.k1 + 1
+      = (((1 : ℕ) :: List.range' (2 + s.k0) s.k1).map
+          (Fin.ofNat N)).toFinset.card := by
+        rw [List.toFinset_card_of_nodup hnodup]
+        simp [List.length_range']
+      _ ≤ #{y | f.SameCycle 1 y} := Finset.card_le_card fun v hv => hsub v hv
+
 /-! ## 方向別の主定理（作業中） -/
 
 /-- (⇒) 必要性: 別軌道完成が存在すれば式側の窓に約数が入る。
