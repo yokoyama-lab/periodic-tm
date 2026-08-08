@@ -251,28 +251,70 @@ theorem k1Star_dvd_le {N ℓ : ℕ} (hN : ℓ < N) (hℓ : 1 ≤ ℓ) :
 で矛盾）。(⇐) の迷いパス割当に、領域条件から出る
 `V₀ + maxsize ≤ c₀ + c₁`（92,501 状態の全数検査で先に確認済み、
 導出: 2Σ+k₀+k₁+4 ≤ ℓ+m）と組で使う。 -/
-theorem two_bin_pack (items : List ℕ) :
-    ∀ c0 c1 : ℕ, items.sum + items.foldr max 0 ≤ c0 + c1 →
-      ∃ l0 l1 : List ℕ, (l0 ++ l1).Perm items ∧ l0.sum ≤ c0 ∧ l1.sum ≤ c1 := by
+theorem two_bin_pack {α : Type*} (size : α → ℕ) (items : List α) :
+    ∀ c0 c1 : ℕ,
+      (items.map size).sum + (items.map size).foldr max 0 ≤ c0 + c1 →
+      ∃ l0 l1 : List α, (l0 ++ l1).Perm items ∧
+        (l0.map size).sum ≤ c0 ∧ (l1.map size).sum ≤ c1 := by
   induction items with
   | nil => exact fun c0 c1 _ => ⟨[], [], by simp, by simp, by simp⟩
   | cons a t ih =>
     intro c0 c1 h
-    simp only [List.sum_cons, List.foldr_cons] at h
-    have hM : t.foldr max 0 ≤ max a (t.foldr max 0) := le_max_right _ _
-    have hMa : a ≤ max a (t.foldr max 0) := le_max_left _ _
-    by_cases ha0 : a ≤ c0
-    · obtain ⟨l0, l1, hp, h0, h1⟩ := ih (c0 - a) c1 (by omega)
+    simp only [List.map_cons, List.sum_cons, List.foldr_cons] at h
+    have hM : (t.map size).foldr max 0
+        ≤ max (size a) ((t.map size).foldr max 0) := le_max_right _ _
+    have hMa : size a ≤ max (size a) ((t.map size).foldr max 0) := le_max_left _ _
+    by_cases ha0 : size a ≤ c0
+    · obtain ⟨l0, l1, hp, h0, h1⟩ := ih (c0 - size a) c1 (by omega)
       refine ⟨a :: l0, l1, hp.cons a, ?_, h1⟩
-      simp only [List.sum_cons]
+      simp only [List.map_cons, List.sum_cons]
       omega
-    · by_cases ha1 : a ≤ c1
-      · obtain ⟨l0, l1, hp, h0, h1⟩ := ih c0 (c1 - a) (by omega)
+    · by_cases ha1 : size a ≤ c1
+      · obtain ⟨l0, l1, hp, h0, h1⟩ := ih c0 (c1 - size a) (by omega)
         refine ⟨l0, a :: l1, List.perm_middle.trans (hp.cons a), h0, ?_⟩
-        simp only [List.sum_cons]
+        simp only [List.map_cons, List.sum_cons]
         omega
       · exfalso
         omega
+
+/-! ### (⇐) の構成部品: 頂点ブロックと2サイクル -/
+
+/-- 迷いパスの頂点ブロック列: 各パス（辺数 j）は連続する j+1 頂点を占める
+（埋め込み `strayEdges` と同じ開始頂点の割り振り）。 -/
+def strayBlocks : ℕ → List ℕ → List (List ℕ)
+  | _,    [] => []
+  | next, j :: rest => List.range' next (j + 1) :: strayBlocks (next + 1 + j) rest
+
+/-- 状態の迷いブロック（開始頂点 2 + k₀ + k₁ から）。 -/
+def AdvState.blocks (s : AdvState) : List (List ℕ) :=
+  strayBlocks (2 + s.k0 + s.k1) s.strays
+
+/-- ブロックの長さは辺数 + 1。 -/
+theorem strayBlocks_length_map :
+    ∀ (next : ℕ) (l : List ℕ),
+      (strayBlocks next l).map List.length = l.map (· + 1)
+  | _, [] => rfl
+  | next, j :: rest => by
+    simp only [strayBlocks, List.map_cons, List.length_range',
+      strayBlocks_length_map (next + 1 + j) rest]
+
+/-- 0 側サイクルの頂点列: `0`、P₀ の新頂点、bin0 の迷いブロック、
+未開示点での充填（長さ ℓ に合わせる）。 -/
+def cycle0Verts (s : AdvState) (b0 : List (List ℕ)) (fill0 : List ℕ) : List ℕ :=
+  (0 :: List.range' 2 s.k0) ++ b0.flatten ++ fill0
+
+/-- 1 側サイクルの頂点列: `1`、P₁ の新頂点、bin1 の迷いブロック、充填。 -/
+def cycle1Verts (s : AdvState) (b1 : List (List ℕ)) (fill1 : List ℕ) : List ℕ :=
+  (1 :: List.range' (2 + s.k0) s.k1) ++ b1.flatten ++ fill1
+
+/-- (⇐) の完成の構成: 2 つのサイクルの `formPerm` の積。
+`b0 ++ b1` は `s.blocks` の置換（`two_bin_pack` の出力）、
+`fill0 ++ fill1` は未開示点 `[vertexCount, N)` の分割。
+正しさ（`IsCompletion`・別軌道）の検証はこの後の作業。 -/
+def buildPerm (N : ℕ) [NeZero N] (s : AdvState)
+    (b0 b1 : List (List ℕ)) (fill0 fill1 : List ℕ) : Perm (Fin N) :=
+  ((cycle0Verts s b0 fill0).map (Fin.ofNat N)).formPerm *
+    ((cycle1Verts s b1 fill1).map (Fin.ofNat N)).formPerm
 
 /-- (⇒) 必要性（系）: 領域内なら完成の存在に依らず式側が成立。 -/
 theorem completion_to_formula {N ℓ : ℕ} [NeZero N] (s : AdvState)
