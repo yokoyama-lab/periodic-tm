@@ -217,6 +217,63 @@ theorem inRegion_formulaSide {N ℓ : ℕ} (s : AdvState)
   refine ⟨m, Finset.mem_range.mpr (by omega), hmdvd, ?_, hmN⟩
   exact max_le (by omega) (by omega)
 
+/-- `k₁*` は自身が `ℓ` の約数で `N − ℓ` 以下（= `D_max`、`N > ℓ` のとき）。
+¬Kills(k₁*−1) の約数証人 m ∈ [k₁*, N−ℓ] と Kills(k₁*) の
+「[k₁*+1, N−ℓ] に約数なし」で m = k₁* に挟み撃つ。 -/
+theorem k1Star_dvd_le {N ℓ : ℕ} (hN : ℓ < N) (hℓ : 1 ≤ ℓ) :
+    PeriodicTM.TwoPointCore.k1Star N ℓ ∣ ℓ ∧
+      PeriodicTM.TwoPointCore.k1Star N ℓ ≤ N - ℓ := by
+  have h1 : ¬ PeriodicTM.TwoPointCore.Kills N ℓ 0 := by
+    intro h
+    have := h 1 (by omega) (by omega) (one_dvd ℓ)
+    omega
+  have hpos : 1 ≤ PeriodicTM.TwoPointCore.k1Star N ℓ := by
+    rcases Nat.eq_zero_or_pos (PeriodicTM.TwoPointCore.k1Star N ℓ) with h0 | h
+    · exact absurd (h0 ▸ PeriodicTM.TwoPointCore.k1Star_kills N ℓ) h1
+    · exact h
+  have hnk := PeriodicTM.TwoPointCore.not_kills_of_lt_k1Star
+    (Nat.sub_lt hpos one_pos)
+  unfold PeriodicTM.TwoPointCore.Kills at hnk
+  push_neg at hnk
+  obtain ⟨m, hmℓ, hm1, hdvd, hmN⟩ := hnk
+  have hk := PeriodicTM.TwoPointCore.k1Star_kills N ℓ
+  have hle : m ≤ PeriodicTM.TwoPointCore.k1Star N ℓ := by
+    by_contra hgt
+    push_neg at hgt
+    have := hk m hmℓ (by omega) hdvd
+    omega
+  have heq : m = PeriodicTM.TwoPointCore.k1Star N ℓ := by omega
+  exact ⟨heq ▸ hdvd, heq ▸ hmN⟩
+
+/-- **2ビン貪欲詰めの十分条件**: 総和＋最大 ≤ 容量和なら、リストを
+2つに分けて各側の和を容量以下にできる。証明は任意順の貪欲
+（入るなら 0 側、だめなら 1 側。両方だめなら sum + max ≥ 2a > c₀+c₁
+で矛盾）。(⇐) の迷いパス割当に、領域条件から出る
+`V₀ + maxsize ≤ c₀ + c₁`（92,501 状態の全数検査で先に確認済み、
+導出: 2Σ+k₀+k₁+4 ≤ ℓ+m）と組で使う。 -/
+theorem two_bin_pack (items : List ℕ) :
+    ∀ c0 c1 : ℕ, items.sum + items.foldr max 0 ≤ c0 + c1 →
+      ∃ l0 l1 : List ℕ, (l0 ++ l1).Perm items ∧ l0.sum ≤ c0 ∧ l1.sum ≤ c1 := by
+  induction items with
+  | nil => exact fun c0 c1 _ => ⟨[], [], by simp, by simp, by simp⟩
+  | cons a t ih =>
+    intro c0 c1 h
+    simp only [List.sum_cons, List.foldr_cons] at h
+    have hM : t.foldr max 0 ≤ max a (t.foldr max 0) := le_max_right _ _
+    have hMa : a ≤ max a (t.foldr max 0) := le_max_left _ _
+    by_cases ha0 : a ≤ c0
+    · obtain ⟨l0, l1, hp, h0, h1⟩ := ih (c0 - a) c1 (by omega)
+      refine ⟨a :: l0, l1, hp.cons a, ?_, h1⟩
+      simp only [List.sum_cons]
+      omega
+    · by_cases ha1 : a ≤ c1
+      · obtain ⟨l0, l1, hp, h0, h1⟩ := ih c0 (c1 - a) (by omega)
+        refine ⟨l0, a :: l1, List.perm_middle.trans (hp.cons a), h0, ?_⟩
+        simp only [List.sum_cons]
+        omega
+      · exfalso
+        omega
+
 /-- (⇒) 必要性（系）: 領域内なら完成の存在に依らず式側が成立。 -/
 theorem completion_to_formula {N ℓ : ℕ} [NeZero N] (s : AdvState)
     (hfit : s.Fits N) (hreg : InLowerRegion N ℓ s) (hℓ : 3 ≤ ℓ)

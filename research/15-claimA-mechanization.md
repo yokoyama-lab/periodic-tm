@@ -64,10 +64,27 @@ Lean 化の現状は `research/STATUS.md` と `lean/WIP/ClaimAGeneral.lean`。
 有限インスタンスで native_decide 検査済みの `ofCycles` と同じ経路なので、
 検証の道具立ては流用できる。
 
+## 発見2（2026-08-09 全数検査）: 割当は「k₁* 固定＋任意順貪欲」で閉じる
+
+ℓ ∈ [3,14]・N ≤ 3ℓ+5 の領域内 **92,501 状態**を厳密検査（部分和）した結果:
+- **失敗ゼロ**（紙の (⇐) は大パラメータでも健在）
+- **m = D_max（= k₁\*）は常に窓に入る**（Lean 済: `k1Star_dvd_le` で
+  k₁\* ∣ ℓ ∧ k₁\* ≤ N−ℓ、下端は m ≥ q+1 ≥ max(…) 既証明）
+- **降順貪欲が常に成功**。さらに強く、貪欲の十分条件
+  `V₀ + maxsize ≤ c₀ + c₁` が領域条件から**純算術で導出できる**:
+  q ≤ ℓ−3 と q ≤ m−1 から 2Σ ≤ ℓ+m−4−2k₀−2k₁、
+  maxsize ≤ Σ−r+2（各アイテム ≥ 2 頂点）と合わせて
+  (Σ+r) + (Σ−r+2) = 2Σ+2 ≤ ℓ+m−2−k₀−k₁ = c₀+c₁ ✓
+- 十分条件が成り立てば**任意順**の貪欲が成功する（失敗時
+  sum+max ≥ 2a > c₀+c₁ の矛盾）→ Lean 済: `two_bin_pack`
+  （分割の存在を Perm 付きで返す）
+
 ## 次の一手（優先順）
 
-1. python で候補2の全数検査（領域内70状態 × 窓の約数 × 2分割）→
-   決定的な割当規則を確定する
-2. その規則で `inRegion_completionSide` を構成・証明
+1. ~~python 全数検査で割当規則を確定~~ **済**（上記）
+2. `inRegion_completionSide` の構成: k₁\* を m に取り、`two_bin_pack` の
+   分割から 2 サイクルの頂点リストを組み、`ofCycles` 型の構成で
+   IsCompletion を示す（残る大物はこの「構成 → IsCompletion」の検証。
+   formPerm の一般補題で f^ℓ=1・軌道長・辺拡張・別軌道を出す）
 3. 主張A一般形を組み立て、`FiniteOrderTM/TwoPointClaimA.lean` 本体へ移動
 4. その後、定理9.6 の下界の不変量帰納（Tree induction・roadmap step 5）へ
