@@ -28,7 +28,7 @@
 | ITM 1マス完全性 | writeHead iff・completenessGoal_oneCell | **1 [Lean済]** | `Involutory.lean` |
 | 文字列橋渡し | StringInvolutory・閉包(a)・applyHead 橋 | **1 [Lean済]** | `InvolutoryString.lean` |
 | KMachine⇔TM0 輸送 | 双模倣 ofK/toK・共役合成の構文的対合性 | **1 [Lean済]** | `InvolutoryTransport.lean` |
-| 補題 9.7 主張A の定式化＋有界検証 | 式側・全数側を可判定述語として定式化。**N ≤ 8 の領域内全26状態**（python 列挙と個数一致）で両側成立、領域外の既知反例 (N6ℓ4, strays=[1,1]) で式≠全数を再現 | **1 [Lean済]**（有界） | `TwoPointClaimA.lean`（記号・root取込）＋ `TwoPointClaimACert.lean`（native_decide・root外、`lake env lean` で検査）。N∈{9,10} の残り44状態はバックトラック型決定手続きが要る。一般証明（パッキング論法）は未着手 |
+| 補題 9.7 主張A の定式化＋有界検証 | 式側・全数側を可判定述語として定式化。**領域内全70状態**（claimA_check.py の OK=70 と同数・照合済み）で両側成立: N≤8 は Perm 全数（26）、N∈{9,10} は証人方式（44。python 生成の完成を Lean が1件ずつ検査、被覆は別途決定）。領域外の既知反例 (N6ℓ4, strays=[1,1]) で式≠全数を再現 | **1 [Lean済]**（有界） | `TwoPointClaimA.lean`（記号・root取込）＋ `TwoPointClaimACert.lean`（native_decide・root外、`lake env lean` で検査）。一般証明（パッキング論法）は未着手 |
 
 ## 影響範囲の注記
 

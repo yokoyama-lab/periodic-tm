@@ -116,4 +116,129 @@ theorem region_sweep_N8 :
         FormulaSide (ℓ + d + 1) ℓ s ∧ CompletionSide (ℓ + d + 1) ℓ s := by
   native_decide
 
+/-! ## Region sweep, N ∈ {9, 10}: witness certificates
+
+At `N ∈ {9, 10}` the exhaustive `∃ f : Perm (Fin N)` check enumerates
+up to `10! = 3.6M` permutations per state; instead, since every
+in-region state is on the POSITIVE side of Claim A, it suffices to
+exhibit one different-cycle completion per state.  The witnesses were
+produced by the backtracking search of research/claimA_check.py
+(`completions`) and are checked here one permutation each; coverage of
+the full enumeration is a separate decidable check, so nothing depends
+on the generator having been exhaustive. -/
+
+/-- A permutation from its nontrivial cycles (vertices as `ℕ`, read in
+`Fin N` via `Fin.ofNat`): the product of `List.formPerm` of the
+cycles.  For genuinely disjoint in-range cycles — the only inputs used
+— this is exactly the intended permutation. -/
+def ofCycles (N : ℕ) [NeZero N] (cs : List (List ℕ)) : Equiv.Perm (Fin N) :=
+  (cs.map fun c => (c.map (Fin.ofNat N)).formPerm).prod
+
+/-- Witness table for `N = 9` (17 in-region states): entries
+`(ℓ, state, cycles of a different-cycle completion)`. -/
+def witnesses9 : List (ℕ × AdvState × List (List ℕ)) := [
+  (3, ⟨0, 0, []⟩, [[0, 2, 3]]),
+  (4, ⟨0, 0, []⟩, [[0, 2, 3, 4]]),
+  (4, ⟨0, 0, [1]⟩, [[0, 2, 3, 4]]),
+  (4, ⟨0, 1, []⟩, [[0, 3, 4, 5], [1, 2]]),
+  (4, ⟨1, 0, []⟩, [[0, 2, 3, 4]]),
+  (5, ⟨0, 0, []⟩, [[0, 2, 3, 4, 5]]),
+  (6, ⟨0, 0, []⟩, [[0, 2, 3, 4, 5, 6]]),
+  (6, ⟨0, 0, [1]⟩, [[0, 2, 3, 4, 5, 6]]),
+  (6, ⟨0, 0, [1, 1]⟩, [[0, 2, 3, 4, 5, 6]]),
+  (6, ⟨0, 0, [2]⟩, [[0, 2, 3, 4, 5, 6]]),
+  (6, ⟨0, 1, []⟩, [[0, 3, 4, 5, 6, 7], [1, 2]]),
+  (6, ⟨0, 1, [1]⟩, [[0, 3, 4, 5, 6, 7], [1, 2]]),
+  (6, ⟨0, 2, []⟩, [[0, 4, 5, 6, 7, 8], [1, 2, 3]]),
+  (6, ⟨1, 0, []⟩, [[0, 2, 3, 4, 5, 6]]),
+  (6, ⟨1, 0, [1]⟩, [[0, 2, 3, 4, 5, 6]]),
+  (6, ⟨1, 1, []⟩, [[0, 2, 4, 5, 6, 7], [1, 3]]),
+  (6, ⟨2, 0, []⟩, [[0, 2, 3, 4, 5, 6]])
+]
+
+/-- Witness table for `N = 10` (27 in-region states). -/
+def witnesses10 : List (ℕ × AdvState × List (List ℕ)) := [
+  (3, ⟨0, 0, []⟩, [[0, 2, 3]]),
+  (4, ⟨0, 0, []⟩, [[0, 2, 3, 4]]),
+  (4, ⟨0, 0, [1]⟩, [[0, 2, 3, 4]]),
+  (4, ⟨0, 1, []⟩, [[0, 3, 4, 5], [1, 2]]),
+  (4, ⟨1, 0, []⟩, [[0, 2, 3, 4]]),
+  (5, ⟨0, 0, []⟩, [[0, 2, 3, 4, 5]]),
+  (5, ⟨0, 0, [1]⟩, [[0, 2, 3, 4, 5]]),
+  (5, ⟨0, 0, [1, 1]⟩, [[0, 2, 3, 4, 5]]),
+  (5, ⟨0, 0, [2]⟩, [[0, 2, 3, 4, 5]]),
+  (5, ⟨0, 1, []⟩, [[0, 3, 5, 7, 9], [1, 2, 4, 6, 8]]),
+  (5, ⟨0, 1, [1]⟩, [[0, 3, 4, 6, 8], [1, 2, 5, 7, 9]]),
+  (5, ⟨0, 2, []⟩, [[0, 4, 6, 8, 9], [1, 2, 3, 5, 7]]),
+  (5, ⟨1, 0, []⟩, [[0, 2, 3, 4, 5]]),
+  (5, ⟨1, 0, [1]⟩, [[0, 2, 3, 4, 5]]),
+  (5, ⟨1, 1, []⟩, [[0, 2, 4, 6, 8], [1, 3, 5, 7, 9]]),
+  (5, ⟨2, 0, []⟩, [[0, 2, 3, 4, 5]]),
+  (6, ⟨0, 0, []⟩, [[0, 2, 3, 4, 5, 6]]),
+  (6, ⟨0, 0, [1]⟩, [[0, 2, 3, 4, 5, 6]]),
+  (6, ⟨0, 0, [1, 1]⟩, [[0, 2, 3, 4, 5, 6]]),
+  (6, ⟨0, 0, [2]⟩, [[0, 2, 3, 4, 5, 6]]),
+  (6, ⟨0, 1, []⟩, [[0, 3, 4, 5, 6, 7], [1, 2]]),
+  (6, ⟨0, 1, [1]⟩, [[0, 3, 4, 5, 6, 7], [1, 2]]),
+  (6, ⟨0, 2, []⟩, [[0, 4, 5, 6, 7, 8], [1, 2, 3]]),
+  (6, ⟨1, 0, []⟩, [[0, 2, 3, 4, 5, 6]]),
+  (6, ⟨1, 0, [1]⟩, [[0, 2, 3, 4, 5, 6]]),
+  (6, ⟨1, 1, []⟩, [[0, 2, 4, 5, 6, 7], [1, 3]]),
+  (6, ⟨2, 0, []⟩, [[0, 2, 3, 4, 5, 6]])
+]
+
+/-- Every table witness IS a different-cycle completion of its state. -/
+theorem witness_ok_9 :
+    ∀ e ∈ witnesses9,
+      IsCompletion 9 e.1 e.2.1 (ofCycles 9 e.2.2) ∧
+        ¬ (ofCycles 9 e.2.2).SameCycle 0 1 := by native_decide
+
+theorem witness_ok_10 :
+    ∀ e ∈ witnesses10,
+      IsCompletion 10 e.1 e.2.1 (ofCycles 10 e.2.2) ∧
+        ¬ (ofCycles 10 e.2.2).SameCycle 0 1 := by native_decide
+
+/-- The tables COVER the enumeration (and the formula side holds):
+every in-region state at `N = 9` / `10` appears with a witness. -/
+theorem coverage_9 :
+    ∀ ℓ ∈ ([3, 4, 5, 6] : List ℕ), ∀ s ∈ inRegionStates 9 ℓ,
+      FormulaSide 9 ℓ s ∧ ∃ e ∈ witnesses9, e.1 = ℓ ∧ e.2.1 = s := by
+  native_decide
+
+theorem coverage_10 :
+    ∀ ℓ ∈ ([3, 4, 5, 6] : List ℕ), ∀ s ∈ inRegionStates 10 ℓ,
+      FormulaSide 10 ℓ s ∧ ∃ e ∈ witnesses10, e.1 = ℓ ∧ e.2.1 = s := by
+  native_decide
+
+/-- **Claim A on every in-region state at `N = 9`.** -/
+theorem region_sweep_N9 :
+    ∀ ℓ ∈ ([3, 4, 5, 6] : List ℕ), ∀ s ∈ inRegionStates 9 ℓ,
+      FormulaSide 9 ℓ s ∧ CompletionSide 9 ℓ s := by
+  intro ℓ hℓ s hs
+  obtain ⟨hf, e, he, hℓe, hse⟩ := coverage_9 ℓ hℓ s hs
+  refine ⟨hf, ofCycles 9 e.2.2, ?_, (witness_ok_9 e he).2⟩
+  have h := (witness_ok_9 e he).1
+  rwa [hℓe, hse] at h
+
+/-- **Claim A on every in-region state at `N = 10`.** -/
+theorem region_sweep_N10 :
+    ∀ ℓ ∈ ([3, 4, 5, 6] : List ℕ), ∀ s ∈ inRegionStates 10 ℓ,
+      FormulaSide 10 ℓ s ∧ CompletionSide 10 ℓ s := by
+  intro ℓ hℓ s hs
+  obtain ⟨hf, e, he, hℓe, hse⟩ := coverage_10 ℓ hℓ s hs
+  refine ⟨hf, ofCycles 10 e.2.2, ?_, (witness_ok_10 e he).2⟩
+  have h := (witness_ok_10 e he).1
+  rwa [hℓe, hse] at h
+
+/-- Bookend: the full sweep range `N ≤ 10` has exactly 70 in-region
+states — the same count as research/claimA_check.py
+(`lower-bound region OK=70`).  With `region_sweep_N8` (26 states) and
+the witness sweeps at `N = 9` (17) and `N = 10` (27), Claim A is now
+machine-checked on ALL of them. -/
+theorem region_state_count_N10 :
+    (([3, 4, 5, 6] : List ℕ).flatMap fun ℓ =>
+      (List.range (10 - ℓ)).flatMap fun d =>
+        inRegionStates (ℓ + d + 1) ℓ).length = 70 := by
+  native_decide
+
 end PeriodicTM.ClaimA
