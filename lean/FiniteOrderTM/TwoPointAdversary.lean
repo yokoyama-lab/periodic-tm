@@ -478,9 +478,49 @@ theorem sameCycleVerts_nodup (s : AdvState) (g r : ℕ) (b : List (List ℕ))
     · exact dRF h hx'
   exact n3.append nF d3
 
+/-- 同一軌道完成の置換: 1 本のサイクルの `formPerm`（残りは固定点）。 -/
+def sameCyclePerm (N : ℕ) [NeZero N] (s : AdvState) (g r : ℕ)
+    (b : List (List ℕ)) : Perm (Fin N) :=
+  ((sameCycleVerts s (List.range' s.vertexCount g)
+    (List.range' (s.vertexCount + g) r) b).map (Fin.ofNat N)).formPerm
+
+/-- **同一軌道完成であること**。別軌道版の `buildPerm_isCompletion` と
+同じ構造だが、サイクルが1本なので `l₂ = []`（`formPerm [] = 1`）と
+みなして既存の補題をそのまま使う。 -/
+theorem sameCyclePerm_isCompletion {N ℓ : ℕ} [NeZero N] (s : AdvState)
+    (g r : ℕ) (b : List (List ℕ))
+    (hlen : (sameCycleVerts s (List.range' s.vertexCount g)
+      (List.range' (s.vertexCount + g) r) b).length = ℓ)
+    (hlt : ∀ x ∈ sameCycleVerts s (List.range' s.vertexCount g)
+      (List.range' (s.vertexCount + g) r) b, x < N)
+    (hbmem : ∀ c ∈ b, c ∈ s.blocks) (hbnd : b.Pairwise List.Disjoint)
+    (hbdup : ∀ c ∈ b, c.Nodup) (hcover : ∀ c ∈ s.blocks, c ∈ b) :
+    IsCompletion N ℓ s (sameCyclePerm N s g r b) := by
+  have hnd := sameCycleVerts_nodup s g r b hbmem hbnd hbdup
+  have hLnd := ofNat_injOn (N := N) hlt hnd
+  have h0mem : (0 : Fin N) ∈ (sameCycleVerts s (List.range' s.vertexCount g)
+      (List.range' (s.vertexCount + g) r) b).map (Fin.ofNat N) := by
+    have h : (0 : ℕ) ∈ sameCycleVerts s (List.range' s.vertexCount g)
+        (List.range' (s.vertexCount + g) r) b := by
+      unfold sameCycleVerts; simp
+    have := List.mem_map_of_mem (f := Fin.ofNat N) h
+    rwa [ofNat_zero_eq_zero] at this
+  unfold sameCyclePerm
+  refine ⟨?_, ?_, ?_⟩
+  · exact formPerm_pow_eq_one_of_dvd hLnd (by rw [List.length_map, hlen])
+  · have h := orbit_card (l₂ := ([] : List (Fin N))) hLnd
+      (by intro x _ hx'; simp at hx') h0mem
+    simpa [List.length_map, hlen] using h
+  · intro p hp
+    -- gap/rest は明示的に渡す（目標からは推論できない）
+    have hadj := (edges_isAdj_sameCycle s (List.range' s.vertexCount g)
+      (List.range' (s.vertexCount + g) r) b hcover p hp).map (Fin.ofNat N)
+    exact formPerm_of_adjacent hLnd hadj
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.sameCyclePerm_isCompletion
 #print axioms PeriodicTM.ClaimA.sameCycleVerts_nodup
 #print axioms PeriodicTM.ClaimA.sameCycleVerts_one_pos
 #print axioms PeriodicTM.ClaimA.edges_isAdj_sameCycle
