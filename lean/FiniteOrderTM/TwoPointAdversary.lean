@@ -13,6 +13,7 @@ FiniteOrderTM/TwoPointAdversary.lean
 `lake env lean FiniteOrderTM/TwoPointAdversary.lean`。
 -/
 import FiniteOrderTM.TwoPointClaimA
+import FiniteOrderTM.QueryGame
 
 namespace PeriodicTM.ClaimA
 
@@ -122,6 +123,49 @@ theorem AdvState.steps_q_le (s : AdvState) :
     simp only [List.foldl_cons, List.length_cons]
     omega
 
+/-! ### 決定木に沿った対局
+
+敵対者の戦略は「問われた点にどう答えるか（どの枝へ行くか）」と
+「状態をどう更新するか」の組。**下界の予算勘定はどんな戦略でも成り立つ**
+ので、ここでは戦略を抽象的に受け取る（新鮮応答が具体例）。 -/
+
+/-- 敵対者の戦略: 答え（枝の選択）と状態更新の種類。 -/
+structure Strategy (N : ℕ) where
+  answer : AdvState → Fin N → Fin N
+  kind : AdvState → Fin N → QueryKind
+
+/-- 木を戦略に沿って最後まで辿ったときの終状態。 -/
+def play {N : ℕ} (σ : Strategy N) :
+    {q : ℕ} → PeriodicTM.QueryGame.Tree N q → AdvState → AdvState
+  | _, .leaf _ _, s => s
+  | _, .node x child, s =>
+      play σ (child (σ.answer s x)) (s.step (σ.kind s x))
+
+/-- **予算勘定**: 深さ `q` の木を辿っても `q` は高々 `q` しか増えない。
+どんな戦略でも成り立つ（各手が `step` 1回だから）。 -/
+theorem play_q_le {N : ℕ} (σ : Strategy N) :
+    ∀ {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (s : AdvState),
+      (play σ t s).q ≤ s.q + q
+  | _, .leaf _ _, s => by simp [play]
+  | _, .node x child, s => by
+    have h1 := play_q_le σ (child (σ.answer s x)) (s.step (σ.kind s x))
+    have h2 := s.step_q_le (σ.kind s x)
+    simp only [play]
+    omega
+
+/-- **領域内に留まる**: 深さが `min (ℓ−2) (k₁*)` 未満の木では、
+終状態も下界領域にいる（初期状態が `q = 0` のとき）。
+これと `ClaimA.completion_survives` で「別軌道完成は最後まで生存」、
+`TwoPointBridge.survives_two_distances` で「型3以外の出力は死ぬ」。 -/
+theorem play_inLowerRegion {N ℓ : ℕ} (σ : Strategy N) {q : ℕ}
+    (t : PeriodicTM.QueryGame.Tree N q) (s : AdvState) (hs : s.q = 0)
+    (hq : q < min (ℓ - 2) (PeriodicTM.TwoPointCore.k1Star N ℓ)) :
+    InLowerRegion N ℓ (play σ t s) := by
+  have := play_q_le σ t s
+  unfold InLowerRegion
+  omega
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.play_inLowerRegion
