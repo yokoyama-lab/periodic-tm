@@ -378,9 +378,110 @@ theorem sameCycleVerts_one_pos (s : AdvState) (gap rest : List ℕ)
   rw [hidx]
   simp
 
+/-- **同一軌道頂点列の Nodup**（充填を未開示点の連続区間に取った版）。
+値域が `{0}∪[2,2+k₀)`／`[vc,vc+g)`／`{1}∪[2+k₀,2+k₀+k₁)`／
+`[vc+g,vc+g+r)`／`[2+k₀+k₁,vc)` の5帯に分かれるので、
+帯どうしの非交差はすべて omega で片づく。 -/
+theorem sameCycleVerts_nodup (s : AdvState) (g r : ℕ) (b : List (List ℕ))
+    (hbmem : ∀ c ∈ b, c ∈ s.blocks) (hbnd : b.Pairwise List.Disjoint)
+    (hbdup : ∀ c ∈ b, c.Nodup) :
+    (sameCycleVerts s (List.range' s.vertexCount g)
+      (List.range' (s.vertexCount + g) r) b).Nodup := by
+  have hvc : 2 + s.k0 + s.k1 ≤ s.vertexCount := by
+    unfold AdvState.vertexCount; omega
+  -- 各部分の値域
+  have hA : ∀ x ∈ (0 :: List.range' 2 s.k0), x = 0 ∨ (2 ≤ x ∧ x < 2 + s.k0) := by
+    intro x hx
+    rcases List.mem_cons.mp hx with rfl | h
+    · exact Or.inl rfl
+    · have := List.mem_range'_1.mp h; exact Or.inr (by omega)
+  have hB : ∀ x ∈ (1 :: List.range' (2 + s.k0) s.k1),
+      x = 1 ∨ (2 + s.k0 ≤ x ∧ x < 2 + s.k0 + s.k1) := by
+    intro x hx
+    rcases List.mem_cons.mp hx with rfl | h
+    · exact Or.inl rfl
+    · have := List.mem_range'_1.mp h; exact Or.inr (by omega)
+  have hF : ∀ x ∈ b.flatten, 2 + s.k0 + s.k1 ≤ x ∧ x < s.vertexCount := by
+    intro x hx
+    obtain ⟨c, hc, hxc⟩ := List.mem_flatten.mp hx
+    exact blocks_mem_bound s (hbmem c hc) hxc
+  have hG : ∀ x ∈ List.range' s.vertexCount g,
+      s.vertexCount ≤ x ∧ x < s.vertexCount + g := fun x hx =>
+    List.mem_range'_1.mp hx
+  have hR : ∀ x ∈ List.range' (s.vertexCount + g) r,
+      s.vertexCount + g ≤ x ∧ x < s.vertexCount + g + r := fun x hx =>
+    List.mem_range'_1.mp hx
+  -- 各部分の Nodup
+  have nA : (0 :: List.range' 2 s.k0).Nodup :=
+    List.nodup_cons.mpr ⟨fun h => by have := List.mem_range'_1.mp h; omega,
+      List.nodup_range'⟩
+  have nB : (1 :: List.range' (2 + s.k0) s.k1).Nodup :=
+    List.nodup_cons.mpr ⟨fun h => by have := List.mem_range'_1.mp h; omega,
+      List.nodup_range'⟩
+  have nF : b.flatten.Nodup := List.nodup_flatten.mpr ⟨hbdup, hbnd⟩
+  -- 帯どうしの非交差
+  have dAG : List.Disjoint (0 :: List.range' 2 s.k0)
+      (List.range' s.vertexCount g) := by
+    intro x hx hx'; have := hA x hx; have := hG x hx'; omega
+  have dAB : List.Disjoint (0 :: List.range' 2 s.k0)
+      (1 :: List.range' (2 + s.k0) s.k1) := by
+    intro x hx hx'; have := hA x hx; have := hB x hx'; omega
+  have dAR : List.Disjoint (0 :: List.range' 2 s.k0)
+      (List.range' (s.vertexCount + g) r) := by
+    intro x hx hx'; have := hA x hx; have := hR x hx'; omega
+  have dAF : List.Disjoint (0 :: List.range' 2 s.k0) b.flatten := by
+    intro x hx hx'; have := hA x hx; have := hF x hx'; omega
+  have dGB : List.Disjoint (List.range' s.vertexCount g)
+      (1 :: List.range' (2 + s.k0) s.k1) := by
+    intro x hx hx'; have := hG x hx; have := hB x hx'; omega
+  have dGR : List.Disjoint (List.range' s.vertexCount g)
+      (List.range' (s.vertexCount + g) r) := by
+    intro x hx hx'; have := hG x hx; have := hR x hx'; omega
+  have dGF : List.Disjoint (List.range' s.vertexCount g) b.flatten := by
+    intro x hx hx'; have := hG x hx; have := hF x hx'; omega
+  have dBR : List.Disjoint (1 :: List.range' (2 + s.k0) s.k1)
+      (List.range' (s.vertexCount + g) r) := by
+    intro x hx hx'; have := hB x hx; have := hR x hx'; omega
+  have dBF : List.Disjoint (1 :: List.range' (2 + s.k0) s.k1) b.flatten := by
+    intro x hx hx'; have := hB x hx; have := hF x hx'; omega
+  have dRF : List.Disjoint (List.range' (s.vertexCount + g) r) b.flatten := by
+    intro x hx hx'; have := hR x hx; have := hF x hx'; omega
+  -- 積み上げ
+  have n1 := nA.append (List.nodup_range' (s := s.vertexCount) (n := g)) dAG
+  have d1 : List.Disjoint ((0 :: List.range' 2 s.k0) ++
+      List.range' s.vertexCount g) (1 :: List.range' (2 + s.k0) s.k1) := by
+    intro x hx hx'
+    rcases List.mem_append.mp hx with h | h
+    · exact dAB h hx'
+    · exact dGB h hx'
+  have n2 := n1.append nB d1
+  have d2 : List.Disjoint (((0 :: List.range' 2 s.k0) ++
+      List.range' s.vertexCount g) ++ (1 :: List.range' (2 + s.k0) s.k1))
+      (List.range' (s.vertexCount + g) r) := by
+    intro x hx hx'
+    rcases List.mem_append.mp hx with h | h
+    · rcases List.mem_append.mp h with h | h
+      · exact dAR h hx'
+      · exact dGR h hx'
+    · exact dBR h hx'
+  have n3 := n2.append (List.nodup_range' (s := s.vertexCount + g) (n := r)) d2
+  have d3 : List.Disjoint ((((0 :: List.range' 2 s.k0) ++
+      List.range' s.vertexCount g) ++ (1 :: List.range' (2 + s.k0) s.k1)) ++
+      List.range' (s.vertexCount + g) r) b.flatten := by
+    intro x hx hx'
+    rcases List.mem_append.mp hx with h | h
+    · rcases List.mem_append.mp h with h | h
+      · rcases List.mem_append.mp h with h | h
+        · exact dAF h hx'
+        · exact dGF h hx'
+      · exact dBF h hx'
+    · exact dRF h hx'
+  exact n3.append nF d3
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.sameCycleVerts_nodup
 #print axioms PeriodicTM.ClaimA.sameCycleVerts_one_pos
 #print axioms PeriodicTM.ClaimA.edges_isAdj_sameCycle
 #print axioms PeriodicTM.ClaimA.type3_output_killed
