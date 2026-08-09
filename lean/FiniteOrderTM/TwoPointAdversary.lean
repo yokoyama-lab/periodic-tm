@@ -726,9 +726,55 @@ theorem not_winsAt_of_bad_leaf {N n ℓ : ℕ} (a b : Fin N) (σ : Strategy N)
   exact hbad ((runs_iff_goodOutput_playLeaf a b σ f t s hagree).mp
     (hwin f hvalid))
 
+/-! ### 付け替え（共役）による輸送
+
+`research/17` の設計判断: グループ順の埋め込みで得た完成を、
+具体的な対局に現れた標識へ移すために、共役 `τ * f * τ⁻¹` に対する
+不変性を用意する。`IsReflection`・`GoodOutput` は共役で移る。 -/
+
+/-- 反射は共役で移る（`ι ↦ τ ∘ ι ∘ τ⁻¹`）。 -/
+theorem isReflection_conj {N : ℕ} (τ : Perm (Fin N)) {f : Perm (Fin N)}
+    {ι : Fin N → Fin N} (h : PeriodicTM.QueryGame.IsReflection f ι) :
+    PeriodicTM.QueryGame.IsReflection (τ * f * τ⁻¹)
+      (fun x => τ (ι (τ⁻¹ x))) := by
+  obtain ⟨hinv, horb, hcc⟩ := h
+  refine ⟨?_, ?_, ?_⟩
+  · intro x
+    simp [hinv]
+  · intro x
+    have := (horb (τ⁻¹ x)).conj (g := τ)
+    simpa using this
+  · intro x
+    simp [hcc]
+
+/-- 良い出力も共役で移る。これで「グループ順の標識で構成した完成」を
+「対局に現れた標識」へ運べる。 -/
+theorem goodOutput_conj {N : ℕ} (τ : Perm (Fin N)) {f : Perm (Fin N)}
+    {a b v₀ v₁ : Fin N}
+    (h : PeriodicTM.QueryGame.GoodOutput a b f v₀ v₁) :
+    PeriodicTM.QueryGame.GoodOutput (τ a) (τ b) (τ * f * τ⁻¹) (τ v₀)
+      (τ v₁) := by
+  obtain ⟨ι, hrefl, ha, hb⟩ := h
+  refine ⟨fun x => τ (ι (τ⁻¹ x)), isReflection_conj τ hrefl, ?_, ?_⟩
+  · simp [ha]
+  · simp [hb]
+
+/-- 共役の冪: `(τ f τ⁻¹)^n = τ f^n τ⁻¹`。位数条件の輸送に使う。 -/
+theorem conj_pow {N : ℕ} (τ f : Perm (Fin N)) (n : ℕ) :
+    (τ * f * τ⁻¹) ^ n = τ * f ^ n * τ⁻¹ := by
+  induction n with
+  | zero => simp
+  | succ n ih => rw [pow_succ, ih, pow_succ]; group
+
+/-- 位数条件は共役で保たれる。 -/
+theorem conj_pow_eq_one {N ℓ : ℕ} (τ f : Perm (Fin N)) (h : f ^ ℓ = 1) :
+    (τ * f * τ⁻¹) ^ ℓ = 1 := by
+  rw [conj_pow, h]; group
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.goodOutput_conj
 #print axioms PeriodicTM.ClaimA.not_winsAt_of_bad_leaf
 #print axioms PeriodicTM.ClaimA.type2_killed_two_distances
 #print axioms PeriodicTM.ClaimA.type4_killed_two_distances
