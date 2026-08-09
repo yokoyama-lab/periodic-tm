@@ -66,6 +66,43 @@ theorem pow_apply_eq_iff {ℓ : ℕ} (f : Perm (Fin N)) (x : Fin N)
     rw [← hcard, orbit_eq_support hx]
     exact hkey
 
+/-! ## 反射の座標表示
+
+`QueryGame.IsReflection f ι` の3条件のうち、ここで使うのは
+「ι は対合」と「f ∘ ι が対合」の2つ。仮定を素で受け取ることで
+`QueryGame.lean`（native_decide 証明書つきで重い）を import せずに
+一般補題として証明できる。適用時は `IsReflection` の成分を渡すだけ。 -/
+
+/-- **共役関係**: 反射は `f` を `f⁻¹` に共役する: `ι (f y) = f⁻¹ (ι y)`。 -/
+theorem reflection_conj {f : Perm (Fin N)} {ι : Fin N → Fin N}
+    (hinv : ∀ x, ι (ι x) = x) (hcc : ∀ x, f (ι (f (ι x))) = x) (y : Fin N) :
+    ι (f y) = f⁻¹ (ι y) := by
+  have h3 := hcc (ι y)
+  rw [hinv y] at h3
+  have := congrArg (⇑f⁻¹) h3
+  simpa using this
+
+/-- 共役関係の反復版: `ι (f^i y) = (f⁻¹)^i (ι y)`。 -/
+theorem reflection_pow {f : Perm (Fin N)} {ι : Fin N → Fin N}
+    (hinv : ∀ x, ι (ι x) = x) (hcc : ∀ x, f (ι (f (ι x))) = x) (y : Fin N) :
+    ∀ i : ℕ, ι ((f ^ i) y) = (f⁻¹ ^ i) (ι y) := by
+  intro i
+  induction i with
+  | zero => simp
+  | succ i ih =>
+    rw [pow_succ', Perm.mul_apply, reflection_conj hinv hcc, ih,
+      pow_succ', Perm.mul_apply]
+
+/-- **位置座標での反射の形**: `ι` が `f^i x` を送る先は、`ι x` から
+`i` 歩**戻った**点。すなわち `pos (ι (f^i x)) = pos (ι x) − i`
+（`TwoPointCore.rho` の座標式そのもの）。自然数の引き算を避けるため
+`f^i` を掛けた形で述べる。 -/
+theorem reflection_apply_pow {f : Perm (Fin N)} {ι : Fin N → Fin N}
+    (hinv : ∀ x, ι (ι x) = x) (hcc : ∀ x, f (ι (f (ι x))) = x) (x : Fin N)
+    (i : ℕ) : (f ^ i) (ι ((f ^ i) x)) = ι x := by
+  rw [reflection_pow hinv hcc x i, inv_pow]
+  simp
+
 /-- 系: `f^i x = x ↔ ℓ ∣ i`（位置 0 に戻る条件）。 -/
 theorem pow_apply_eq_self_iff {ℓ : ℕ} (f : Perm (Fin N)) (x : Fin N)
     (hcard : #{y | f.SameCycle x y} = ℓ) {i : ℕ} :
