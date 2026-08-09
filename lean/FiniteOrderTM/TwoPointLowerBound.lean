@@ -624,6 +624,30 @@ theorem two_point_lower_bound {ℓ q : ℕ} (hℓ : 3 ≤ ℓ)
 
 end Main
 
+/-! ### 整合性チェック: 一般定理は有界証明書を包含する
+
+`QueryGame.lean` の `native_decide` 証明書（N=6/7, ℓ=4 で深さ 1 は
+勝てない）が、一般定理の系として（`native_decide` なしで）出ることを
+確認する。`k₁*(6,4) = k₁*(7,4) = 2` の評価だけ `decide`。 -/
+
+example : ¬ ∃ t : Tree 6 1, WinsAt 4 4 (0 : Fin 6) 1 t := by
+  refine two_point_lower_bound (by norm_num) (lt_min (by norm_num) ?_)
+  have h2 : 2 ≤ PeriodicTM.TwoPointCore.k1Star 6 4 := by
+    rw [PeriodicTM.TwoPointCore.k1Star, Nat.le_find_iff]
+    intro m hm
+    have hm' : m = 0 ∨ m = 1 := by omega
+    rcases hm' with rfl | rfl <;> decide
+  omega
+
+example : ¬ ∃ t : Tree 7 1, WinsAt 4 4 (0 : Fin 7) 1 t := by
+  refine two_point_lower_bound (by norm_num) (lt_min (by norm_num) ?_)
+  have h2 : 2 ≤ PeriodicTM.TwoPointCore.k1Star 7 4 := by
+    rw [PeriodicTM.TwoPointCore.k1Star, Nat.le_find_iff]
+    intro m hm
+    have hm' : m = 0 ∨ m = 1 := by omega
+    rcases hm' with rfl | rfl <;> decide
+  omega
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.two_point_lower_bound
