@@ -442,6 +442,79 @@ theorem cycle1Verts_nodup (s : AdvState) (b1 : List (List ℕ)) (fill1 : List �
       · have := (hflat x h).2
         omega
 
+/-- サイクル 0 の頂点の所属は3つの帯に分かれる（頭部・ブロック・充填）。 -/
+theorem mem_cycle0Verts (s : AdvState) (b0 : List (List ℕ)) (fill0 : List ℕ)
+    (hb0 : ∀ b ∈ b0, ∀ x ∈ b, 2 + s.k0 + s.k1 ≤ x ∧ x < s.vertexCount)
+    (hf0 : ∀ x ∈ fill0, s.vertexCount ≤ x) :
+    ∀ x ∈ cycle0Verts s b0 fill0,
+      (x < 2 + s.k0 ∧ x ≠ 1) ∨
+      (2 + s.k0 + s.k1 ≤ x ∧ x < s.vertexCount ∧ ∃ b ∈ b0, x ∈ b) ∨
+      (s.vertexCount ≤ x ∧ x ∈ fill0) := by
+  intro x hx
+  unfold cycle0Verts at hx
+  rcases List.mem_append.mp hx with h | h
+  · rcases List.mem_append.mp h with h | h
+    · rcases List.mem_cons.mp h with rfl | h
+      · exact Or.inl ⟨by omega, by omega⟩
+      · have := List.mem_range'_1.mp h
+        exact Or.inl ⟨by omega, by omega⟩
+    · obtain ⟨b, hb, hxb⟩ := List.mem_flatten.mp h
+      have := hb0 b hb x hxb
+      exact Or.inr (Or.inl ⟨this.1, this.2, b, hb, hxb⟩)
+  · exact Or.inr (Or.inr ⟨hf0 x h, h⟩)
+
+/-- サイクル 1 の頂点の所属（頭部の帯は `{1} ∪ [2+k₀, 2+k₀+k₁)`）。 -/
+theorem mem_cycle1Verts (s : AdvState) (b1 : List (List ℕ)) (fill1 : List ℕ)
+    (hb1 : ∀ b ∈ b1, ∀ x ∈ b, 2 + s.k0 + s.k1 ≤ x ∧ x < s.vertexCount)
+    (hf1 : ∀ x ∈ fill1, s.vertexCount ≤ x) :
+    ∀ x ∈ cycle1Verts s b1 fill1,
+      (x = 1 ∨ (2 + s.k0 ≤ x ∧ x < 2 + s.k0 + s.k1)) ∨
+      (2 + s.k0 + s.k1 ≤ x ∧ x < s.vertexCount ∧ ∃ b ∈ b1, x ∈ b) ∨
+      (s.vertexCount ≤ x ∧ x ∈ fill1) := by
+  intro x hx
+  unfold cycle1Verts at hx
+  rcases List.mem_append.mp hx with h | h
+  · rcases List.mem_append.mp h with h | h
+    · rcases List.mem_cons.mp h with rfl | h
+      · exact Or.inl (Or.inl rfl)
+      · have := List.mem_range'_1.mp h
+        exact Or.inl (Or.inr ⟨by omega, by omega⟩)
+    · obtain ⟨b, hb, hxb⟩ := List.mem_flatten.mp h
+      have := hb1 b hb x hxb
+      exact Or.inr (Or.inl ⟨this.1, this.2, b, hb, hxb⟩)
+  · exact Or.inr (Or.inr ⟨hf1 x h, h⟩)
+
+/-- **2つのサイクルは頂点を共有しない。** 頭部の帯は数値的に分離
+（`{0} ∪ [2,2+k₀)` と `{1} ∪ [2+k₀,2+k₀+k₁)`）、ブロック同士は
+`two_bin_pack` の分割（`hcross`）、充填同士は仮定 `hfd` による。 -/
+theorem cycles_disjoint (s : AdvState) (b0 b1 : List (List ℕ))
+    (fill0 fill1 : List ℕ)
+    (hb0 : ∀ b ∈ b0, ∀ x ∈ b, 2 + s.k0 + s.k1 ≤ x ∧ x < s.vertexCount)
+    (hb1 : ∀ b ∈ b1, ∀ x ∈ b, 2 + s.k0 + s.k1 ≤ x ∧ x < s.vertexCount)
+    (hcross : ∀ b ∈ b0, ∀ c ∈ b1, ∀ x ∈ b, x ∉ c)
+    (hf0 : ∀ x ∈ fill0, s.vertexCount ≤ x)
+    (hf1 : ∀ x ∈ fill1, s.vertexCount ≤ x)
+    (hfd : List.Disjoint fill0 fill1) :
+    List.Disjoint (cycle0Verts s b0 fill0) (cycle1Verts s b1 fill1) := by
+  have hvc : 2 + s.k0 + s.k1 ≤ s.vertexCount := by
+    unfold AdvState.vertexCount; omega
+  intro x hx hx'
+  rcases mem_cycle0Verts s b0 fill0 hb0 hf0 x hx with h0 | h0 | h0 <;>
+    rcases mem_cycle1Verts s b1 fill1 hb1 hf1 x hx' with h1 | h1 | h1
+  · rcases h1 with rfl | h1
+    · exact h0.2 rfl
+    · omega
+  · omega
+  · omega
+  · rcases h1 with rfl | h1 <;> omega
+  · obtain ⟨_, _, b, hb, hxb⟩ := h0
+    obtain ⟨_, _, c, hc, hxc⟩ := h1
+    exact hcross b hb c hc x hxb hxc
+  · omega
+  · rcases h1 with rfl | h1 <;> omega
+  · omega
+  · exact hfd h0.2 h1.2
+
 /-- (⇐) の完成の構成: 2 つのサイクルの `formPerm` の積。
 `b0 ++ b1` は `s.blocks` の置換（`two_bin_pack` の出力）、
 `fill0 ++ fill1` は未開示点 `[vertexCount, N)` の分割。
