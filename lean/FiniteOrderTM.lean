@@ -27,3 +27,7 @@ import FiniteOrderTM.InvolutoryAssembly
 import FiniteOrderTM.NoGo
 import FiniteOrderTM.TwoPointCore
 import FiniteOrderTM.TwoPointClaimA
+-- 定理9.6 の下界の本体。root から import していないと `lake build` の対象外になり、
+-- 「lake build 緑」が two_point_lower_bound について何も言わない状態になる
+-- （2026-08-10 に是正。それまでは `lake env lean` の一回限りの検査で、olean も CI も残っていなかった）。
+import FiniteOrderTM.TwoPointLowerBound
