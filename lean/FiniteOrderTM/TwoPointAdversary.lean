@@ -12,10 +12,13 @@ FiniteOrderTM/TwoPointAdversary.lean
 **BUILD NOTE**: root（`FiniteOrderTM.lean`）非取込。検査は
 `lake env lean FiniteOrderTM/TwoPointAdversary.lean`。
 -/
-import FiniteOrderTM.TwoPointClaimA
+import FiniteOrderTM.TwoPointClaimAGeneral
 import FiniteOrderTM.QueryGame
+import FiniteOrderTM.TwoPointBridge
 
 namespace PeriodicTM.ClaimA
+
+open Equiv
 
 /-! ### リストの1点更新（`strays` の第 i 本を伸ばす） -/
 
@@ -165,7 +168,71 @@ theorem play_inLowerRegion {N ℓ : ℕ} (σ : Strategy N) {q : ℕ}
   unfold InLowerRegion
   omega
 
+/-! ### 開示頂点の分類（葉の出力対を4型へ写す規則）
+
+埋め込みの頂点番号は `0`・`1`・P₀ の新頂点 `[2, 2+k₀)`・P₁ の新頂点
+`[2+k₀, 2+k₀+k₁)`・迷い頂点・未開示点。前4者は `0` または `1` からの
+オフセットが確定しているので、出力対の型（research/09 の表）が決まる。 -/
+
+/-- 開示頂点の所属。`onP0 a` は「`f^a(0)` である」の意。 -/
+inductive VertexClass where
+  | onP0 (a : ℕ)
+  | onP1 (a : ℕ)
+  | other
+deriving DecidableEq
+
+/-- 頂点番号から所属を読む（番号付けは `AdvState.edges` の埋め込みと同じ）。 -/
+def AdvState.classify (s : AdvState) (v : ℕ) : VertexClass :=
+  if v = 0 then .onP0 0
+  else if v = 1 then .onP1 0
+  else if 2 ≤ v ∧ v < 2 + s.k0 then .onP0 (v - 1)
+  else if 2 + s.k0 ≤ v ∧ v < 2 + s.k0 + s.k1 then .onP1 (v - 1 - s.k0)
+  else .other
+
+/-- 出力対の型（両成分とも所属が確定しているときだけ定まる）。
+`none` は「未開示点か迷い点を含む出力」で、敵対者は軌道外配置で殺す。 -/
+def AdvState.outputType (s : AdvState) (ℓ : ℕ) (v₀ v₁ : ℕ) :
+    Option (PeriodicTM.TwoPointBridge.OutputType ℓ) :=
+  match s.classify v₀, s.classify v₁ with
+  | .onP0 a, .onP0 b => some (.type1 (a : ZMod ℓ) (b : ZMod ℓ))
+  | .onP0 a, .onP1 b => some (.type2 (a : ZMod ℓ) (b : ZMod ℓ))
+  | .onP1 a, .onP0 b => some (.type3 (a : ZMod ℓ) (b : ZMod ℓ))
+  | .onP1 a, .onP1 b => some (.type4 (a : ZMod ℓ) (b : ZMod ℓ))
+  | _, _ => none
+
+/-! ### 分類が正しいこと（完成のもとで位置が一致する） -/
+
+/-- P₀ の辺は状態の辺集合に含まれる。 -/
+theorem mem_edges_P0 {s : AdvState} {p : ℕ × ℕ}
+    (hp : p ∈ pathEdges 0 2 s.k0) : p ∈ s.edges := by
+  unfold AdvState.edges
+  exact List.mem_append.mpr (Or.inl (List.mem_append.mpr (Or.inl hp)))
+
+/-- **P₀ 上の位置は宣言どおり**: 任意の完成 `f` で、`0` から `a+1` 歩
+進んだ点は頂点番号 `2 + a`（`a < k₀`）。すなわち `classify` が
+`onP0 (a+1)` と読む頂点は本当に `f^(a+1)(0)` である。 -/
+theorem completion_pow_zero {N ℓ : ℕ} [NeZero N] (s : AdvState)
+    (f : Perm (Fin N)) (hcomp : IsCompletion N ℓ s f) :
+    ∀ a, a < s.k0 → (f ^ (a + 1)) (Fin.ofNat N 0) = Fin.ofNat N (2 + a) := by
+  intro a
+  induction a with
+  | zero =>
+    intro h
+    have he := hcomp.2.2 _ (mem_edges_P0 (pathEdges_mem (a := 0) (next := 2) h))
+    rw [if_pos rfl] at he
+    simpa using he
+  | succ a ih =>
+    intro h
+    have hprev := ih (by omega)
+    have he := hcomp.2.2 _
+      (mem_edges_P0 (pathEdges_mem (a := 0) (next := 2) h))
+    rw [if_neg (by omega : ¬ a + 1 = 0)] at he
+    have hidx : 2 + (a + 1) - 1 = 2 + a := by omega
+    rw [hidx] at he
+    rw [pow_succ', Perm.mul_apply, hprev, he]
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.completion_pow_zero
 #print axioms PeriodicTM.ClaimA.play_inLowerRegion
