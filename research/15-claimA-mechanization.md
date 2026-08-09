@@ -1,6 +1,6 @@
 # 主張A（補題9.7）機械化の設計ノート — 2026-08-09 ループ autoresearch
 
-Lean 化の現状は `research/STATUS.md` と `lean/WIP/ClaimAGeneral.lean`。
+Lean 化の現状は `research/STATUS.md` と `lean/FiniteOrderTM/TwoPointClaimAGeneral.lean`（主張Aは完成・sorry 0）。
 このノートは残る **(⇐) パッキング構成**の設計と、機械化で見つかった簡約の記録。
 
 ## 発見1: (⇒) は完成の存在を使わない（紙より短い道）
