@@ -627,9 +627,57 @@ theorem type1_killed_two_distances {N ℓ : ℕ} [NeZero N] (hℓ : 3 ≤ ℓ)
   have : (1 : ZMod ℓ) = 0 := by linear_combination h2 - h1
   exact one_ne_zero this
 
+/-- **型2の2距離撃墜**: `v₀` が P₀ 側（位置 `α`、距離に依らない）、
+`v₁` が P₁ 側（位置 `d + β`）の出力は、距離 `d` と `d+1` の両方では
+良い出力になれない。`2d = 2(d+1)` すなわち `2 = 0` に帰着し、
+`ℓ ≥ 3` に矛盾する（偶奇に依らない）。 -/
+theorem type2_killed_two_distances {N ℓ : ℕ} [NeZero N] (hℓ : 3 ≤ ℓ)
+    {f g : Perm (Fin N)}
+    (hcardf : #{y | f.SameCycle (0 : Fin N) y} = ℓ)
+    (hcardg : #{y | g.SameCycle (0 : Fin N) y} = ℓ)
+    {α β d : ℕ} {v₀ v₁ : Fin N}
+    (hv₀f : v₀ = (f ^ α) (0 : Fin N)) (hv₀g : v₀ = (g ^ α) (0 : Fin N))
+    (hv₁f : v₁ = (f ^ (d + β)) (0 : Fin N))
+    (hv₁g : v₁ = (g ^ ((d + 1) + β)) (0 : Fin N))
+    (hdf : (1 : Fin N) = (f ^ d) (0 : Fin N))
+    (hdg : (1 : Fin N) = (g ^ (d + 1)) (0 : Fin N))
+    (hgf : PeriodicTM.QueryGame.GoodOutput (0 : Fin N) 1 f v₀ v₁)
+    (hgg : PeriodicTM.QueryGame.GoodOutput (0 : Fin N) 1 g v₀ v₁) :
+    False := by
+  have h1 := goodOutput_pos_relation hcardf hv₀f hv₁f hdf hgf
+  have h2 := goodOutput_pos_relation hcardg hv₀g hv₁g hdg hgg
+  push_cast at h1 h2
+  have h2eq : (2 : ZMod ℓ) = 0 := by linear_combination h2 - h1
+  exact PeriodicTM.TwoPointCore.two_ne_zero hℓ h2eq
+
+/-- **型4の2距離撃墜**: 両成分とも P₁ 側（位置 `d + α`, `d + β`）の
+出力も、距離が 2 つ残っていれば死ぬ（`1 = 0` に帰着）。 -/
+theorem type4_killed_two_distances {N ℓ : ℕ} [NeZero N] (hℓ : 3 ≤ ℓ)
+    {f g : Perm (Fin N)}
+    (hcardf : #{y | f.SameCycle (0 : Fin N) y} = ℓ)
+    (hcardg : #{y | g.SameCycle (0 : Fin N) y} = ℓ)
+    {α β d : ℕ} {v₀ v₁ : Fin N}
+    (hv₀f : v₀ = (f ^ (d + α)) (0 : Fin N))
+    (hv₀g : v₀ = (g ^ ((d + 1) + α)) (0 : Fin N))
+    (hv₁f : v₁ = (f ^ (d + β)) (0 : Fin N))
+    (hv₁g : v₁ = (g ^ ((d + 1) + β)) (0 : Fin N))
+    (hdf : (1 : Fin N) = (f ^ d) (0 : Fin N))
+    (hdg : (1 : Fin N) = (g ^ (d + 1)) (0 : Fin N))
+    (hgf : PeriodicTM.QueryGame.GoodOutput (0 : Fin N) 1 f v₀ v₁)
+    (hgg : PeriodicTM.QueryGame.GoodOutput (0 : Fin N) 1 g v₀ v₁) :
+    False := by
+  haveI : Fact (1 < ℓ) := ⟨by omega⟩
+  have h1 := goodOutput_pos_relation hcardf hv₀f hv₁f hdf hgf
+  have h2 := goodOutput_pos_relation hcardg hv₀g hv₁g hdg hgg
+  push_cast at h1 h2
+  have hone : (1 : ZMod ℓ) = 0 := by linear_combination h2 - h1
+  exact one_ne_zero hone
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.type2_killed_two_distances
+#print axioms PeriodicTM.ClaimA.type4_killed_two_distances
 #print axioms PeriodicTM.ClaimA.type1_killed_two_distances
 #print axioms PeriodicTM.ClaimA.sameCyclePerm_pow_eq_one_vertex
 #print axioms PeriodicTM.ClaimA.sameCyclePerm_isCompletion
