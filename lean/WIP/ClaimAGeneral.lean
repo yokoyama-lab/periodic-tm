@@ -613,6 +613,70 @@ theorem sameCycle_mem_of_mem [Finite α] {l₁ l₂ : List α}
   rw [mul_pow_apply_of_mem hd i hx]
   exact formPerm_pow_mem hx i
 
+/-! ### リスト上の隣接（辺の拡張の道具）
+
+構成したサイクルでは、開示済みの辺 `(a, b)` は必ず「リスト上で
+`a` の次が `b`」という形で現れる。`formPerm` はまさにこの隣接を
+実現する置換なので、辺の拡張は隣接性に帰着する。 -/
+
+/-- `l` の中で `a` の直後に `b` が来る。 -/
+def IsAdj (l : List α) (a b : α) : Prop :=
+  ∃ i : ℕ, ∃ h : i + 1 < l.length,
+    l[i]'(Nat.lt_of_succ_lt h) = a ∧ l[i + 1]'h = b
+
+/-- 隣接する 2 点は `formPerm` で移り合う。 -/
+theorem formPerm_of_adjacent {l : List α} (hl : l.Nodup) {a b : α}
+    (h : IsAdj l a b) : l.formPerm a = b := by
+  obtain ⟨i, hi, ha, hb⟩ := h
+  subst ha
+  subst hb
+  exact List.formPerm_apply_lt_getElem l hl i hi
+
+/-- 右に付け足しても隣接は保たれる。 -/
+theorem IsAdj.append_right {l₁ l₂ : List α} {a b : α} (h : IsAdj l₁ a b) :
+    IsAdj (l₁ ++ l₂) a b := by
+  obtain ⟨i, hi, ha, hb⟩ := h
+  have hlt : i + 1 < (l₁ ++ l₂).length := by
+    rw [List.length_append]; omega
+  refine ⟨i, hlt, ?_, ?_⟩
+  · rw [List.getElem_append_left (by omega)]; exact ha
+  · rw [List.getElem_append_left hi]; exact hb
+
+/-- 左に付け足しても隣接は保たれる（添字をずらす）。 -/
+theorem IsAdj.append_left {l₁ l₂ : List α} {a b : α} (h : IsAdj l₂ a b) :
+    IsAdj (l₁ ++ l₂) a b := by
+  obtain ⟨i, hi, ha, hb⟩ := h
+  have hlt : l₁.length + i + 1 < (l₁ ++ l₂).length := by
+    rw [List.length_append]; omega
+  refine ⟨l₁.length + i, hlt, ?_, ?_⟩
+  · rw [List.getElem_append_right (by omega)]
+    simpa using ha
+  · rw [List.getElem_append_right (by omega)]
+    simpa [Nat.add_sub_cancel_left, Nat.add_assoc] using hb
+
+/-- 0 側の点では積は 0 側の `formPerm` として作用する。 -/
+theorem mul_apply_of_mem_left {l₁ l₂ : List α} (hd : List.Disjoint l₁ l₂)
+    {x : α} (hx : x ∈ l₁) :
+    (l₁.formPerm * l₂.formPerm) x = l₁.formPerm x := by
+  rw [Perm.mul_apply, List.formPerm_apply_of_notMem (hd hx)]
+
+/-- 1 側の点では積は 1 側の `formPerm` として作用する
+（移った先も 1 側なので 0 側は動かさない）。 -/
+theorem mul_apply_of_mem_right {l₁ l₂ : List α} (hd : List.Disjoint l₁ l₂)
+    {x : α} (hx : x ∈ l₂) :
+    (l₁.formPerm * l₂.formPerm) x = l₂.formPerm x := by
+  rw [Perm.mul_apply]
+  exact List.formPerm_apply_of_notMem
+    (fun h => hd h (List.formPerm_apply_mem_of_mem hx))
+
+/-- 連続区間の中では `x` の次は `x + 1`。 -/
+theorem isAdj_range' {s n x : ℕ} (h1 : s ≤ x) (h2 : x + 1 < s + n) :
+    IsAdj (List.range' s n) x (x + 1) := by
+  refine ⟨x - s, ?_, ?_, ?_⟩
+  · rw [List.length_range']; omega
+  · rw [List.getElem_range']; omega
+  · rw [List.getElem_range']; omega
+
 end FormPerm
 
 /-! ### 軌道の同定（`IsCompletion` の「軌道長 = ℓ」と「別軌道」） -/
