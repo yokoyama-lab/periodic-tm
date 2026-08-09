@@ -1023,9 +1023,50 @@ theorem concPlay_used_length_le {N : ℕ} :
     simp only [concPlay]
     omega
 
+/-- **最終状態の完成は各手の答えと一致する（帰納）**。
+`f` が対局終了時の辺をすべて尊重すれば、木を `f` に対して走らせたときに
+辿り着く葉は具体的な対局が辿った葉と同じ。
+これが `research/17` の手順3（`Agrees` の充足）の実体である。
+（`c.used.length + q < N` は各手で新鮮な点が残っていることの保証。） -/
+theorem runs_iff_good_concPlayLeaf {N : ℕ} (a b : Fin N) (f : Perm (Fin N)) :
+    ∀ {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (c : ConcState N),
+      c.used.Nodup → c.used.length + q < N →
+      (∀ p ∈ (concPlay t c).edges, f p.1 = p.2) →
+      (PeriodicTM.QueryGame.Runs a b t f ↔
+        PeriodicTM.QueryGame.GoodOutput a b f (concPlayLeaf t c).1
+          (concPlayLeaf t c).2)
+  | _, .leaf v₀ v₁, c, _, _, _ => Iff.rfl
+  | q + 1, .node x child, c, hnd, hlen, hedges => by
+    -- 各手の答えは辺として記録されており、`f` はそれを尊重する
+    have hmem : (x, concAnswer c x) ∈ (concPlay (child (concAnswer c x))
+        (concStep c x)).edges :=
+      concPlay_edges_subset _ _ (concAnswer_mem_edges c x hnd (by omega))
+    have hfx : f x = concAnswer c x := hedges _ hmem
+    show PeriodicTM.QueryGame.Runs a b (child (f x)) f ↔ _
+    rw [hfx]
+    exact runs_iff_good_concPlayLeaf a b f (child (concAnswer c x))
+      (concStep c x) (concStep_used_nodup c x hnd)
+      (by have := concStep_used_length_le c x; omega) hedges
+
+/-- **木が勝てないことの具体形**: 対局が辿った葉の出力が、対局の辺を
+尊重するある完成 `f`（約束を満たす）に対して良くなければ、その木は
+勝利戦略ではない。`not_winsAt_of_bad_leaf` の allocation 順版。 -/
+theorem not_winsAt_of_bad_concLeaf {N n ℓ : ℕ} (a b : Fin N)
+    {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (c : ConcState N)
+    (hnd : c.used.Nodup) (hlen : c.used.length + q < N)
+    (f : Perm (Fin N)) (hvalid : PeriodicTM.QueryGame.Valid n ℓ a f)
+    (hedges : ∀ p ∈ (concPlay t c).edges, f p.1 = p.2)
+    (hbad : ¬ PeriodicTM.QueryGame.GoodOutput a b f (concPlayLeaf t c).1
+      (concPlayLeaf t c).2) :
+    ¬ PeriodicTM.QueryGame.WinsAt n ℓ a b t := by
+  intro hwin
+  exact hbad ((runs_iff_good_concPlayLeaf a b f t c hnd hlen hedges).mp
+    (hwin f hvalid))
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.not_winsAt_of_bad_concLeaf
 #print axioms PeriodicTM.ClaimA.concPlay_edges_subset
 #print axioms PeriodicTM.ClaimA.concAnswer_mem_edges
 #print axioms PeriodicTM.ClaimA.concStep_used_nodup
