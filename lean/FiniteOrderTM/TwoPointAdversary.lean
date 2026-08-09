@@ -361,9 +361,27 @@ theorem edges_isAdj_sameCycle (s : AdvState) (gap rest : List ℕ)
   · obtain ⟨c, hc, hadj⟩ := strayEdges_mem_block s.strays (2 + s.k0 + s.k1) p h
     exact (hadj.flatten (hcover c hc)).append_left
 
+/-- **距離が実現されること**: `1` は頂点列の位置
+`d = 1 + k₀ + |gap|` にある。`formPerm` はリストの位置を 1 つ進める
+置換なので、これは `1 = f^d(0)` を意味する（`gap` の長さで距離を選べる
+＝ 生存距離集合 `D` の各元に対応する完成が作れる）。 -/
+theorem sameCycleVerts_one_pos (s : AdvState) (gap rest : List ℕ)
+    (b : List (List ℕ)) :
+    (sameCycleVerts s gap rest b)[1 + s.k0 + gap.length]? = some 1 := by
+  unfold sameCycleVerts
+  have hlenA : (0 :: List.range' 2 s.k0).length = 1 + s.k0 := by
+    simp [List.length_range']; omega
+  rw [List.append_assoc, List.append_assoc, List.append_assoc,
+    List.getElem?_append_right (by omega), hlenA]
+  rw [List.getElem?_append_right (by omega)]
+  have hidx : 1 + s.k0 + gap.length - (1 + s.k0) - gap.length = 0 := by omega
+  rw [hidx]
+  simp
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.sameCycleVerts_one_pos
 #print axioms PeriodicTM.ClaimA.edges_isAdj_sameCycle
 #print axioms PeriodicTM.ClaimA.type3_output_killed
 #print axioms PeriodicTM.ClaimA.completion_onP1_pos
