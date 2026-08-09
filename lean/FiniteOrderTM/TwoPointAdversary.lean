@@ -880,21 +880,46 @@ theorem freshVertex_not_mem {N : ℕ} {used : List (Fin N)} {v : Fin N}
   have hp := List.find?_some h
   simpa using hp
 
-/-- 新鮮応答: 既に答えの決まっている点はその答え、そうでなければ
-未使用の頂点を1つ割り当てる。 -/
+/-- 質問された点も開示済みに数える（未登録なら追加）。
+**これを忘れると、後の新規割り当てが `x` を選んでしまい、パスが
+合流または自己ループしうる**（新鮮応答の前提が壊れる）。 -/
+def withQueried {N : ℕ} (used : List (Fin N)) (x : Fin N) : List (Fin N) :=
+  if x ∈ used then used else used ++ [x]
+
 def concAnswer {N : ℕ} (c : ConcState N) (x : Fin N) : Fin N :=
   match c.edges.find? (fun p => decide (p.1 = x)) with
   | some p => p.2
-  | none => (freshVertex N c.used).getD x
+  | none => (freshVertex N (withQueried c.used x)).getD x
 
-/-- 具体状態の更新（新しい点を開示したときだけ伸びる）。 -/
+/-- 具体状態の更新（新しい点を開示したときだけ伸びる）。
+新頂点は**質問点も含めた**開示済み集合から外して選ぶ。 -/
 def concStep {N : ℕ} (c : ConcState N) (x : Fin N) : ConcState N :=
   match c.edges.find? (fun p => decide (p.1 = x)) with
   | some _ => c
   | none =>
-      match freshVertex N c.used with
-      | some v => ⟨c.used ++ [v], c.edges ++ [(x, v)]⟩
+      match freshVertex N (withQueried c.used x) with
+      | some v => ⟨withQueried c.used x ++ [v], c.edges ++ [(x, v)]⟩
       | none => c
+
+theorem withQueried_nodup {N : ℕ} {used : List (Fin N)} (x : Fin N)
+    (h : used.Nodup) : (withQueried used x).Nodup := by
+  unfold withQueried
+  split
+  · exact h
+  · exact List.Nodup.append h (List.nodup_singleton x)
+      (by intro a ha hb; rw [List.mem_singleton] at hb; subst hb;
+          rename_i hx; exact hx ha)
+
+theorem withQueried_length_le {N : ℕ} (used : List (Fin N)) (x : Fin N) :
+    (withQueried used x).length ≤ used.length + 1 := by
+  unfold withQueried; split <;> simp
+
+theorem subset_withQueried {N : ℕ} (used : List (Fin N)) (x : Fin N) :
+    used ⊆ withQueried used x := by
+  unfold withQueried
+  split
+  · exact fun a ha => ha
+  · exact fun a ha => List.mem_append.mpr (Or.inl ha)
 
 /-- **allocation 順の標識は重複しない**: `used` は Nodup を保つ。
 これが付け替え `τ` を作るための単射性を与える。 -/
@@ -904,15 +929,16 @@ theorem concStep_used_nodup {N : ℕ} (c : ConcState N) (x : Fin N)
   cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
   | some p => simpa using h
   | none =>
-    cases hfresh : freshVertex N c.used with
+    cases hfresh : freshVertex N (withQueried c.used x) with
     | none => simpa using h
     | some v =>
-      have hdisj : List.Disjoint c.used [v] := by
+      have hdisj : List.Disjoint (withQueried c.used x) [v] := by
         intro a ha hb
         rw [List.mem_singleton] at hb
         subst hb
         exact freshVertex_not_mem hfresh ha
-      exact List.Nodup.append h (List.nodup_singleton v) hdisj
+      exact List.Nodup.append (withQueried_nodup x h) (List.nodup_singleton v)
+        hdisj
 
 /-- **未使用頂点は残っている**: 開示済みが `N` 個未満なら新鮮な点が取れる。 -/
 theorem freshVertex_isSome {N : ℕ} {used : List (Fin N)} (hnd : used.Nodup)
@@ -939,7 +965,7 @@ theorem freshVertex_isSome {N : ℕ} {used : List (Fin N)} (hnd : used.Nodup)
 `(x, concAnswer c x)` が入っている。したがって「最終状態の辺をすべて
 尊重する完成」は、各手の答えとも一致する（`Agrees` の核）。 -/
 theorem concAnswer_mem_edges {N : ℕ} (c : ConcState N) (x : Fin N)
-    (hnd : c.used.Nodup) (h : c.used.length < N) :
+    (hnd : c.used.Nodup) (h : c.used.length + 1 < N) :
     (x, concAnswer c x) ∈ (concStep c x).edges := by
   unfold concAnswer concStep
   cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
@@ -953,7 +979,10 @@ theorem concAnswer_mem_edges {N : ℕ} (c : ConcState N) (x : Fin N)
     rw [heq]
     exact hp
   | none =>
-    obtain ⟨v, hv⟩ := freshVertex_isSome hnd h
+    have hnd' := withQueried_nodup x hnd
+    have hlen' : (withQueried c.used x).length < N := by
+      have := withQueried_length_le c.used x; omega
+    obtain ⟨v, hv⟩ := freshVertex_isSome hnd' hlen'
     simp only [hv]
     simp
 
@@ -964,20 +993,23 @@ theorem concStep_edges_subset {N : ℕ} (c : ConcState N) (x : Fin N) :
   cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
   | some p => exact fun a ha => ha
   | none =>
-    cases hfresh : freshVertex N c.used with
+    cases hfresh : freshVertex N (withQueried c.used x) with
     | none => exact fun a ha => ha
     | some v => exact fun a ha => List.mem_append.mpr (Or.inl ha)
 
 /-- 開示済み頂点は 1 手で高々 1 個増える。 -/
 theorem concStep_used_length_le {N : ℕ} (c : ConcState N) (x : Fin N) :
-    (concStep c x).used.length ≤ c.used.length + 1 := by
+    (concStep c x).used.length ≤ c.used.length + 2 := by
   unfold concStep
   cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
   | some p => simp
   | none =>
-    cases hfresh : freshVertex N c.used with
+    cases hfresh : freshVertex N (withQueried c.used x) with
     | none => simp
-    | some v => simp
+    | some v =>
+      have := withQueried_length_le c.used x
+      simp only [List.length_append, List.length_singleton]
+      omega
 
 /-! ### 具体的な対局（allocation 順） -/
 
@@ -1015,7 +1047,7 @@ theorem concPlay_used_nodup {N : ℕ} :
 
 theorem concPlay_used_length_le {N : ℕ} :
     ∀ {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (c : ConcState N),
-      (concPlay t c).used.length ≤ c.used.length + q
+      (concPlay t c).used.length ≤ c.used.length + 2 * q
   | _, .leaf _ _, c => by simp [concPlay]
   | _, .node x child, c => by
     have h1 := concPlay_used_length_le (child (concAnswer c x)) (concStep c x)
@@ -1030,7 +1062,7 @@ theorem concPlay_used_length_le {N : ℕ} :
 （`c.used.length + q < N` は各手で新鮮な点が残っていることの保証。） -/
 theorem runs_iff_good_concPlayLeaf {N : ℕ} (a b : Fin N) (f : Perm (Fin N)) :
     ∀ {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (c : ConcState N),
-      c.used.Nodup → c.used.length + q < N →
+      c.used.Nodup → c.used.length + 2 * q < N →
       (∀ p ∈ (concPlay t c).edges, f p.1 = p.2) →
       (PeriodicTM.QueryGame.Runs a b t f ↔
         PeriodicTM.QueryGame.GoodOutput a b f (concPlayLeaf t c).1
@@ -1053,7 +1085,7 @@ theorem runs_iff_good_concPlayLeaf {N : ℕ} (a b : Fin N) (f : Perm (Fin N)) :
 勝利戦略ではない。`not_winsAt_of_bad_leaf` の allocation 順版。 -/
 theorem not_winsAt_of_bad_concLeaf {N n ℓ : ℕ} (a b : Fin N)
     {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (c : ConcState N)
-    (hnd : c.used.Nodup) (hlen : c.used.length + q < N)
+    (hnd : c.used.Nodup) (hlen : c.used.length + 2 * q < N)
     (f : Perm (Fin N)) (hvalid : PeriodicTM.QueryGame.Valid n ℓ a f)
     (hedges : ∀ p ∈ (concPlay t c).edges, f p.1 = p.2)
     (hbad : ¬ PeriodicTM.QueryGame.GoodOutput a b f (concPlayLeaf t c).1
@@ -1079,7 +1111,7 @@ theorem concStep_sources_nodup {N : ℕ} (c : ConcState N) (x : Fin N)
   cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
   | some p => exact h
   | none =>
-    cases hfresh : freshVertex N c.used with
+    cases hfresh : freshVertex N (withQueried c.used x) with
     | none => exact h
     | some v =>
       have hx : x ∉ c.edges.map Prod.fst := by
@@ -1123,12 +1155,12 @@ theorem concStep_targets_in_used {N : ℕ} (c : ConcState N) (x : Fin N)
   cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
   | some p => exact h
   | none =>
-    cases hfresh : freshVertex N c.used with
+    cases hfresh : freshVertex N (withQueried c.used x) with
     | none => exact h
     | some v =>
       intro p hp
       rcases List.mem_append.mp hp with hp' | hp'
-      · exact List.mem_append.mpr (Or.inl (h p hp'))
+      · exact List.mem_append.mpr (Or.inl (subset_withQueried c.used x (h p hp')))
       · rw [List.mem_singleton] at hp'
         subst hp'
         exact List.mem_append.mpr (Or.inr (List.mem_singleton_self v))
@@ -1141,13 +1173,14 @@ theorem concStep_targets_nodup {N : ℕ} (c : ConcState N) (x : Fin N)
   cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
   | some p => exact h2
   | none =>
-    cases hfresh : freshVertex N c.used with
+    cases hfresh : freshVertex N (withQueried c.used x) with
     | none => exact h2
     | some v =>
       have hv : v ∉ c.edges.map Prod.snd := by
         intro hmem
         obtain ⟨p, hp, hpv⟩ := List.mem_map.mp hmem
-        exact freshVertex_not_mem hfresh (hpv ▸ h1 p hp)
+        exact freshVertex_not_mem hfresh
+          (hpv ▸ subset_withQueried c.used x (h1 p hp))
       have hdisj : List.Disjoint (c.edges.map Prod.snd) [v] := by
         intro a ha hb
         rw [List.mem_singleton] at hb
@@ -1176,7 +1209,7 @@ theorem concStep_edges_length_le {N : ℕ} (c : ConcState N) (x : Fin N) :
   cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
   | some p => simp
   | none =>
-    cases hfresh : freshVertex N c.used with
+    cases hfresh : freshVertex N (withQueried c.used x) with
     | none => simp
     | some v => simp
 
