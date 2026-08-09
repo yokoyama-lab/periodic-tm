@@ -1063,9 +1063,50 @@ theorem not_winsAt_of_bad_concLeaf {N n ℓ : ℕ} (a b : Fin N)
   exact hbad ((runs_iff_good_concPlayLeaf a b f t c hnd hlen hedges).mp
     (hwin f hvalid))
 
+/-! ### 開示辺は部分関数（同じ始点が2度出ない）
+
+具体状態から抽象状態（形）を読み取るための構造不変量。新鮮応答は
+「まだ答えていない点」にしか新しい辺を作らないので、始点は重複しない。 -/
+
+/-- 辺の始点に重複がない。 -/
+def SourcesNodup {N : ℕ} (c : ConcState N) : Prop :=
+  (c.edges.map Prod.fst).Nodup
+
+/-- **始点の重複しなさは1手で保たれる**。 -/
+theorem concStep_sources_nodup {N : ℕ} (c : ConcState N) (x : Fin N)
+    (h : SourcesNodup c) : SourcesNodup (concStep c x) := by
+  unfold SourcesNodup concStep
+  cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+  | some p => exact h
+  | none =>
+    cases hfresh : freshVertex N c.used with
+    | none => exact h
+    | some v =>
+      have hx : x ∉ c.edges.map Prod.fst := by
+        intro hmem
+        obtain ⟨p, hp, hpx⟩ := List.mem_map.mp hmem
+        have := List.find?_eq_none.mp hfind p hp
+        simp [hpx] at this
+      have hdisj : List.Disjoint (c.edges.map Prod.fst) [x] := by
+        intro a ha hb
+        rw [List.mem_singleton] at hb
+        subst hb
+        exact hx ha
+      simpa using List.Nodup.append h (List.nodup_singleton x) hdisj
+
+/-- 対局を通じても始点は重複しない。 -/
+theorem concPlay_sources_nodup {N : ℕ} :
+    ∀ {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (c : ConcState N),
+      SourcesNodup c → SourcesNodup (concPlay t c)
+  | _, .leaf _ _, c, h => h
+  | _, .node x child, c, h =>
+    concPlay_sources_nodup (child (concAnswer c x)) (concStep c x)
+      (concStep_sources_nodup c x h)
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.concPlay_sources_nodup
 #print axioms PeriodicTM.ClaimA.not_winsAt_of_bad_concLeaf
 #print axioms PeriodicTM.ClaimA.concPlay_edges_subset
 #print axioms PeriodicTM.ClaimA.concAnswer_mem_edges
