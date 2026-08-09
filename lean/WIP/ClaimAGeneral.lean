@@ -559,6 +559,44 @@ theorem formPerm_mul_pow_eq_one {l₁ l₂ : List α} (h₁ : l₁.Nodup) (h₂ 
   rw [(formPerm_disjoint hd).commute.mul_pow,
     formPerm_pow_eq_one_of_dvd h₁ hn₁, formPerm_pow_eq_one_of_dvd h₂ hn₂, one_mul]
 
+/-- `formPerm` の反復はリストの外へ出ない。 -/
+theorem formPerm_pow_mem {l : List α} {x : α} (hx : x ∈ l) :
+    ∀ k : ℕ, (l.formPerm ^ k) x ∈ l := by
+  intro k
+  induction k with
+  | zero => simpa using hx
+  | succ k ih =>
+    rw [pow_succ', Perm.mul_apply]
+    exact List.formPerm_apply_mem_of_mem ih
+
+/-- **積の作用は自分のサイクル上では片側だけ**: `l₁` の点では
+`l₂` の `formPerm` は恒等なので、積の反復は `l₁` 側の反復に一致する。
+「0 の軌道が `l₁` に閉じている」ことの土台。 -/
+theorem mul_pow_apply_of_mem {l₁ l₂ : List α} (hd : List.Disjoint l₁ l₂) :
+    ∀ (k : ℕ) {x : α}, x ∈ l₁ →
+      ((l₁.formPerm * l₂.formPerm) ^ k) x = (l₁.formPerm ^ k) x := by
+  intro k
+  induction k with
+  | zero => intro x _; simp
+  | succ k ih =>
+    intro x hx
+    rw [pow_succ, pow_succ, Perm.mul_apply, Perm.mul_apply, Perm.mul_apply,
+      List.formPerm_apply_of_notMem (hd hx)]
+    exact ih (List.formPerm_apply_mem_of_mem hx)
+
+/-- 同じ Nodup リスト上の 2 点は `formPerm` の同一軌道にある
+（`i` から `j` へは `j + (len − i)` 歩）。 -/
+theorem formPerm_sameCycle {l : List α} (hl : l.Nodup) {x y : α}
+    (hx : x ∈ l) (hy : y ∈ l) : Perm.SameCycle l.formPerm x y := by
+  obtain ⟨i, hi, rfl⟩ := List.getElem_of_mem hx
+  obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hy
+  refine ⟨((j + (l.length - i) : ℕ) : ℤ), ?_⟩
+  rw [zpow_natCast, List.formPerm_pow_apply_getElem l hl]
+  have hidx : (i + (j + (l.length - i))) % l.length = j := by
+    have : i + (j + (l.length - i)) = j + l.length := by omega
+    rw [this, Nat.add_mod_right, Nat.mod_eq_of_lt hj]
+  simp [hidx]
+
 end FormPerm
 
 /-- `Fin.ofNat N` は `[0, N)` 上で単射（構成リストの Nodup を
