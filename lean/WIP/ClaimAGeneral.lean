@@ -654,6 +654,19 @@ theorem IsAdj.append_left {l₁ l₂ : List α} {a b : α} (h : IsAdj l₂ a b) 
   · rw [List.getElem_append_right (by omega)]
     simpa [Nat.add_sub_cancel_left, Nat.add_assoc] using hb
 
+/-- 隣接は `map` で移る（ℕ の頂点列を `Fin N` へ移すのに使う）。 -/
+theorem IsAdj.map {β : Type*} {l : List α} {a b : α} (f : α → β)
+    (h : IsAdj l a b) : IsAdj (l.map f) (f a) (f b) := by
+  obtain ⟨i, hi, ha, hb⟩ := h
+  refine ⟨i, by simpa using hi, ?_, ?_⟩ <;> simp [List.getElem_map, ha, hb]
+
+/-- ブロック内の隣接は連結（flatten）でも保たれる。 -/
+theorem IsAdj.flatten {L : List (List α)} {l : List α} (hl : l ∈ L) {a b : α}
+    (h : IsAdj l a b) : IsAdj L.flatten a b := by
+  obtain ⟨p, t, rfl⟩ := List.mem_iff_append.mp hl
+  rw [List.flatten_append, List.flatten_cons]
+  exact (h.append_right).append_left
+
 /-- 0 側の点では積は 0 側の `formPerm` として作用する。 -/
 theorem mul_apply_of_mem_left {l₁ l₂ : List α} (hd : List.Disjoint l₁ l₂)
     {x : α} (hx : x ∈ l₁) :
@@ -677,7 +690,52 @@ theorem isAdj_range' {s n x : ℕ} (h1 : s ≤ x) (h2 : x + 1 < s + n) :
   · rw [List.getElem_range']; omega
   · rw [List.getElem_range']; omega
 
+/-- **開示パスの形がそのまま隣接になる**: 頭 `a` に連続区間を継いだ
+`a :: range' s n` では、第 `i` 辺
+`(if i = 0 then a else s + i − 1, s + i)` が隣接。
+P₀（`a = 0, s = 2`）・P₁（`a = 1, s = 2 + k₀`）の両方をこれで賄う。 -/
+theorem isAdj_cons_range' {a s n i : ℕ} (hi : i < n) :
+    IsAdj (a :: List.range' s n) (if i = 0 then a else s + i - 1) (s + i) := by
+  match i with
+  | 0 =>
+    refine ⟨0, ?_, ?_, ?_⟩
+    · simp [List.length_range']; omega
+    · simp
+    · simp [List.getElem_range']
+  | k + 1 =>
+    refine ⟨k + 1, ?_, ?_, ?_⟩
+    · simp [List.length_range']; omega
+    · rw [if_neg (by omega)]
+      simp only [List.getElem_cons_succ, List.getElem_range']
+      omega
+    · simp only [List.getElem_cons_succ, List.getElem_range']
+      omega
+
 end FormPerm
+
+/-! ### 開示辺 → 隣接（`IsAdj` の定義より後に置く必要がある） -/
+
+/-- P₀・P₁ の辺は「頭＋連続区間」の中の隣接。 -/
+theorem pathEdges_isAdj {a s n : ℕ} {p : ℕ × ℕ} (hp : p ∈ pathEdges a s n) :
+    IsAdj (a :: List.range' s n) p.1 p.2 := by
+  obtain ⟨i, hi, rfl⟩ := List.mem_map.mp hp
+  exact isAdj_cons_range' (List.mem_range.mp hi)
+
+/-- 迷いパスの辺は、そのブロック（連続区間）の中の隣接。 -/
+theorem strayPathEdges_isAdj {s n : ℕ} {p : ℕ × ℕ}
+    (hp : p ∈ pathEdges s (s + 1) n) :
+    IsAdj (List.range' s (n + 1)) p.1 p.2 := by
+  obtain ⟨i, hi, rfl⟩ := List.mem_map.mp hp
+  have hin := List.mem_range.mp hi
+  -- 順に書き換える（simp only で同時に渡すと、第2の等式が if の枝の
+  -- 中にも作用して第1の等式が合わなくなる）
+  have h1 : (if i = 0 then s else s + 1 + i - 1) = s + i := by split <;> omega
+  rw [h1]
+  have h2 : s + 1 + i = (s + i) + 1 := by omega
+  rw [h2]
+  -- 先に単一化させてから omega（`exact … (by omega)` だと目標が
+  -- メタ変数のまま omega に渡り失敗する）
+  refine isAdj_range' ?_ ?_ <;> omega
 
 /-! ### 軌道の同定（`IsCompletion` の「軌道長 = ℓ」と「別軌道」） -/
 
