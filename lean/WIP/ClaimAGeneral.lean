@@ -799,6 +799,43 @@ theorem ofNat_disjoint {N : ℕ} [NeZero N] {l₁ l₂ : List ℕ}
   rw [Nat.mod_eq_of_lt (h₁ x hx), Nat.mod_eq_of_lt (h₂ y hy)] at hval
   exact hd hx (hval ▸ hy)
 
+/-- 迷いパスの辺は、必ず**どれか1つのブロックの中**の隣接。 -/
+theorem strayEdges_mem_block :
+    ∀ (l : List ℕ) (next : ℕ), ∀ p ∈ strayEdges next l,
+      ∃ b ∈ strayBlocks next l, IsAdj b p.1 p.2 := by
+  intro l
+  induction l with
+  | nil => intro next p hp; simp [strayEdges] at hp
+  | cons j rest ih =>
+    intro next p hp
+    rw [strayEdges] at hp
+    rcases List.mem_append.mp hp with h | h
+    · exact ⟨List.range' next (j + 1), by simp [strayBlocks],
+        strayPathEdges_isAdj h⟩
+    · obtain ⟨b, hb, hadj⟩ := ih (next + 1 + j) p h
+      exact ⟨b, by simp [strayBlocks, hb], hadj⟩
+
+/-- **開示辺の振り分け**: ブロックがどちらかのビンに入っていれば、
+すべての開示辺はどちらかのサイクル列の隣接になる
+（接着定理 `buildPerm_isCompletion` の `hedge` を供給する）。 -/
+theorem edges_isAdj (s : AdvState) (b0 b1 : List (List ℕ))
+    (fill0 fill1 : List ℕ) (hsplit : ∀ b ∈ s.blocks, b ∈ b0 ∨ b ∈ b1) :
+    ∀ p ∈ s.edges,
+      IsAdj (cycle0Verts s b0 fill0) p.1 p.2 ∨
+      IsAdj (cycle1Verts s b1 fill1) p.1 p.2 := by
+  intro p hp
+  unfold AdvState.edges at hp
+  unfold cycle0Verts cycle1Verts
+  -- `++` は左結合なので `(P₀ ++ P₁) ++ stray` の順に分解する
+  rcases List.mem_append.mp hp with h | h
+  · rcases List.mem_append.mp h with h | h
+    · exact Or.inl (pathEdges_isAdj h).append_right.append_right
+    · exact Or.inr (pathEdges_isAdj h).append_right.append_right
+  · obtain ⟨b, hb, hadj⟩ := strayEdges_mem_block s.strays (2 + s.k0 + s.k1) p h
+    rcases hsplit b hb with hb0 | hb1
+    · exact Or.inl (hadj.flatten hb0).append_left.append_right
+    · exact Or.inr (hadj.flatten hb1).append_left.append_right
+
 /-! ### 接着定理: 構成が別軌道完成であること
 
 構造的な仮定（長さ・Nodup・相互素・値域・辺が隣接）をすべて満たす
