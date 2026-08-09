@@ -833,9 +833,36 @@ theorem not_sameCycle_conj {N : ℕ} [NeZero N] (τ f : Perm (Fin N))
   refine h ((sameCycle_conj_iff τ f 0 1).mp ?_)
   rwa [hτ0, hτ1]
 
+/-! ### 付け替えの存在（`research/17` の手順3の鍵）
+
+2 通りの標識付け（対局の allocation 順 と 埋め込みのグループ順）は
+どちらも「スロット → `Fin N`」の単射なので、両者を結ぶ置換が取れる。
+mathlib の `Equiv.Perm.exists_extending_pair` がそのまま使える。 -/
+
+/-- 2つの単射を結ぶ置換の存在。 -/
+theorem exists_relabeling {N m : ℕ} (u v : Fin m → Fin N)
+    (hu : Function.Injective u) (hv : Function.Injective v) :
+    ∃ τ : Perm (Fin N), ∀ i, τ (u i) = v i :=
+  Perm.exists_extending_pair u v hu hv
+
+/-- **指定点を共有する標識付けの付け替えは `0` と `1` を固定する**。
+`isCompletion_conj` / `not_sameCycle_conj` の仮定がそのまま満たされる。 -/
+theorem exists_relabeling_fixing {N m : ℕ} [NeZero N] (u v : Fin m → Fin N)
+    (hu : Function.Injective u) (hv : Function.Injective v)
+    {i0 i1 : Fin m} (hu0 : u i0 = 0) (hv0 : v i0 = 0)
+    (hu1 : u i1 = 1) (hv1 : v i1 = 1) :
+    ∃ τ : Perm (Fin N), (∀ i, τ (u i) = v i) ∧ τ 0 = 0 ∧ τ 1 = 1 := by
+  obtain ⟨τ, hτ⟩ := exists_relabeling u v hu hv
+  refine ⟨τ, hτ, ?_, ?_⟩
+  · have h := hτ i0
+    rwa [hu0, hv0] at h
+  · have h := hτ i1
+    rwa [hu1, hv1] at h
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.exists_relabeling_fixing
 #print axioms PeriodicTM.ClaimA.isCompletion_conj
 #print axioms PeriodicTM.ClaimA.orbit_card_conj
 #print axioms PeriodicTM.ClaimA.goodOutput_conj
