@@ -273,9 +273,60 @@ theorem completion_onP1_pos {N ℓ : ℕ} [NeZero N] (s : AdvState)
   rw [pow_add, Perm.mul_apply, ← hd]
   exact completion_pow_one s f hcomp a ha
 
+/-! ### 葉での kill（別軌道完成による型3の撃墜）
+
+`GoodOutput` の反射は軌道を保つので、出力の第1成分は必ず `0` と
+同一軌道でなければならない。別軌道完成では `1` 側の点はこれを満たさず、
+**型3（`v₀` が `1` 側）は問答無用で死ぬ**。研究ノート09 の
+「型3は別軌道完成で殺す」の具体形。 -/
+
+/-- `GoodOutput` なら第1成分は `a` と同一軌道（反射が軌道を保つから）。 -/
+theorem goodOutput_sameCycle_left {N : ℕ} {f : Perm (Fin N)}
+    {a b v₀ v₁ : Fin N}
+    (h : PeriodicTM.QueryGame.GoodOutput a b f v₀ v₁) : f.SameCycle a v₀ := by
+  obtain ⟨ι, ⟨_, horb, _⟩, ha, _⟩ := h
+  rw [← ha]
+  exact horb a
+
+/-- 同様に第2成分は `b` と同一軌道。 -/
+theorem goodOutput_sameCycle_right {N : ℕ} {f : Perm (Fin N)}
+    {a b v₀ v₁ : Fin N}
+    (h : PeriodicTM.QueryGame.GoodOutput a b f v₀ v₁) : f.SameCycle b v₁ := by
+  obtain ⟨ι, ⟨_, horb, _⟩, _, hb⟩ := h
+  rw [← hb]
+  exact horb b
+
+/-- **別軌道完成による撃墜**: `0` と `1` が別軌道なら、`1` 側の点を
+第1成分に出す対（＝型3）はどれも `GoodOutput` になりえない。 -/
+theorem not_good_of_sameCycle_one {N : ℕ} [NeZero N] (f : Perm (Fin N))
+    (hdiff : ¬ f.SameCycle (0 : Fin N) 1) {v₀ v₁ : Fin N}
+    (hv : f.SameCycle 1 v₀) :
+    ¬ PeriodicTM.QueryGame.GoodOutput (0 : Fin N) 1 f v₀ v₁ := by
+  intro hg
+  exact hdiff ((goodOutput_sameCycle_left hg).trans hv.symm)
+
+/-- P₁ 上の点は `1` と同一軌道（`completion_pow_one` の言い換え）。 -/
+theorem sameCycle_one_onP1 {N ℓ : ℕ} [NeZero N] (s : AdvState)
+    (f : Perm (Fin N)) (hcomp : IsCompletion N ℓ s f) (hN : 2 ≤ N)
+    (a : ℕ) (ha : a < s.k1) :
+    f.SameCycle (1 : Fin N) (Fin.ofNat N (2 + s.k0 + a)) := by
+  refine ⟨((a + 1 : ℕ) : ℤ), ?_⟩
+  rw [zpow_natCast, ← ofNat_one_eq_one hN]
+  exact completion_pow_one s f hcomp a ha
+
+/-- **型3の具体形は別軌道完成で死ぬ**（葉での kill その1）。 -/
+theorem type3_output_killed {N ℓ : ℕ} [NeZero N] (s : AdvState)
+    (f : Perm (Fin N)) (hcomp : IsCompletion N ℓ s f)
+    (hdiff : ¬ f.SameCycle (0 : Fin N) 1) (hN : 2 ≤ N)
+    (a : ℕ) (ha : a < s.k1) (v₁ : Fin N) :
+    ¬ PeriodicTM.QueryGame.GoodOutput (0 : Fin N) 1 f
+      (Fin.ofNat N (2 + s.k0 + a)) v₁ :=
+  not_good_of_sameCycle_one f hdiff (sameCycle_one_onP1 s f hcomp hN a ha)
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.type3_output_killed
 #print axioms PeriodicTM.ClaimA.completion_onP1_pos
 #print axioms PeriodicTM.ClaimA.completion_pow_zero
 #print axioms PeriodicTM.ClaimA.play_inLowerRegion
