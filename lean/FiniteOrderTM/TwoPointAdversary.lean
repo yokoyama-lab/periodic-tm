@@ -517,9 +517,74 @@ theorem sameCyclePerm_isCompletion {N ℓ : ℕ} [NeZero N] (s : AdvState)
       (List.range' (s.vertexCount + g) r) b hcover p hp).map (Fin.ofNat N)
     exact formPerm_of_adjacent hLnd hadj
 
+/-- 充填を連続区間に取った版での `1` の位置（`gap.length = g`）。 -/
+theorem sameCycleVerts_one_pos' (s : AdvState) (g r : ℕ) (b : List (List ℕ)) :
+    (sameCycleVerts s (List.range' s.vertexCount g)
+      (List.range' (s.vertexCount + g) r) b)[1 + s.k0 + g]? = some 1 := by
+  have h := sameCycleVerts_one_pos s (List.range' s.vertexCount g)
+    (List.range' (s.vertexCount + g) r) b
+  simpa [List.length_range'] using h
+
+/-- **距離 `d = 1 + k₀ + g` が実現されている**:
+`f^d(0) = 1`。`formPerm` はリスト上の位置を 1 つ進めるので、
+`0` が位置 0、`1` が位置 `d` にあることから直ちに従う。
+これで補題9.4 の型分類に現れる距離 `d` が、
+`gap` の長さ `g` によって自由に選べることが確定する。 -/
+theorem sameCyclePerm_pow_eq_one_vertex {N : ℕ} [NeZero N] (s : AdvState)
+    (g r : ℕ) (b : List (List ℕ))
+    (hlt : ∀ x ∈ sameCycleVerts s (List.range' s.vertexCount g)
+      (List.range' (s.vertexCount + g) r) b, x < N)
+    (hbmem : ∀ c ∈ b, c ∈ s.blocks) (hbnd : b.Pairwise List.Disjoint)
+    (hbdup : ∀ c ∈ b, c.Nodup)
+    (hd : 1 + s.k0 + g < (sameCycleVerts s (List.range' s.vertexCount g)
+      (List.range' (s.vertexCount + g) r) b).length) :
+    ((sameCyclePerm N s g r b) ^ (1 + s.k0 + g)) (Fin.ofNat N 0)
+      = Fin.ofNat N 1 := by
+  have hnd := sameCycleVerts_nodup s g r b hbmem hbnd hbdup
+  have hLnd := ofNat_injOn (N := N) hlt hnd
+  have hlenL : ((sameCycleVerts s (List.range' s.vertexCount g)
+      (List.range' (s.vertexCount + g) r) b).map (Fin.ofNat N)).length
+      = (sameCycleVerts s (List.range' s.vertexCount g)
+        (List.range' (s.vertexCount + g) r) b).length :=
+    List.length_map (Fin.ofNat N)
+  have hdL : 1 + s.k0 + g < ((sameCycleVerts s (List.range' s.vertexCount g)
+      (List.range' (s.vertexCount + g) r) b).map (Fin.ofNat N)).length := by
+    rw [hlenL]; exact hd
+  -- 位置 0 と位置 d の値
+  have h0? : ((sameCycleVerts s (List.range' s.vertexCount g)
+      (List.range' (s.vertexCount + g) r) b).map (Fin.ofNat N))[0]?
+      = some (Fin.ofNat N 0) := by
+    rw [List.getElem?_map]
+    unfold sameCycleVerts
+    simp
+  have h1? : ((sameCycleVerts s (List.range' s.vertexCount g)
+      (List.range' (s.vertexCount + g) r) b).map
+      (Fin.ofNat N))[1 + s.k0 + g]? = some (Fin.ofNat N 1) := by
+    rw [List.getElem?_map, sameCycleVerts_one_pos']
+    rfl
+  have h0 := List.getElem?_eq_getElem (l := (sameCycleVerts s
+    (List.range' s.vertexCount g) (List.range' (s.vertexCount + g) r) b).map
+    (Fin.ofNat N)) (i := 0) (by omega)
+  have h1 := List.getElem?_eq_getElem (l := (sameCycleVerts s
+    (List.range' s.vertexCount g) (List.range' (s.vertexCount + g) r) b).map
+    (Fin.ofNat N)) (i := 1 + s.k0 + g) hdL
+  rw [h0?] at h0
+  rw [h1?] at h1
+  have key := List.formPerm_pow_apply_getElem _ hLnd (1 + s.k0 + g) 0 (by omega)
+  have hmod : (0 + (1 + s.k0 + g)) % ((sameCycleVerts s
+      (List.range' s.vertexCount g) (List.range' (s.vertexCount + g) r) b).map
+      (Fin.ofNat N)).length = 1 + s.k0 + g := by
+    rw [Nat.zero_add]; exact Nat.mod_eq_of_lt hdL
+  unfold sameCyclePerm
+  simp only [hmod] at key
+  -- `ofNat 0 → L[0]`、`ofNat 1 → L[d]` の向きに書き換える
+  rw [Option.some.inj h0, Option.some.inj h1]
+  exact key
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.sameCyclePerm_pow_eq_one_vertex
 #print axioms PeriodicTM.ClaimA.sameCyclePerm_isCompletion
 #print axioms PeriodicTM.ClaimA.sameCycleVerts_nodup
 #print axioms PeriodicTM.ClaimA.sameCycleVerts_one_pos
