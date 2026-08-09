@@ -1,24 +1,28 @@
 /-
-WIP/ClaimAGeneral.lean — 主張A（補題9.7）一般証明の作業ファイル
+FiniteOrderTM/TwoPointClaimAGeneral.lean
+— 補題9.7 主張A の一般証明（sorry ゼロ、2026-08-09 完成）
 
-root（FiniteOrderTM.lean）非取込・sorry 可の作業領域。完成した補題から
-FiniteOrderTM/TwoPointClaimA.lean 本体へ移す。検査は
-`lake env lean WIP/ClaimAGeneral.lean`（sorry は警告として残る）。
+`claimA_general` : 3 ≤ ℓ のとき、下界領域内の任意の新鮮応答状態で
+  FormulaSide N ℓ s ↔ CompletionSide N ℓ s
+（`TwoPointClaimA.Statement` の中身）。有界検証は
+`TwoPointClaimACert.lean`（領域内全70状態・領域外の既知反例）にある。
 
-目標: `Statement N ℓ`（TwoPointClaimA.lean）
-  ∀ s, s.Fits N → InLowerRegion N ℓ s →
-    (FormulaSide N ℓ s ↔ CompletionSide N ℓ s)
+依存公理は propext / Classical.choice / Quot.sound のみ
+（ファイル末尾の `#print axioms` が毎回確認する）。
 
-分解（research/09 補題9.7 の証明の写し）:
-* (⇒) completion_to_formula — 必要性。完成 f から m := 1 の軌道長を取る。
-  - m ∣ ℓ            … orbit_card_dvd（本ファイルで証明済み）
-  - m ≤ N − ℓ        … 0 の軌道（長さ ℓ）と 1 の軌道（長さ m）の非交差勘定
-  - k₁ + 1 ≤ m       … P₁ の k₁+1 頂点が 1 の軌道に入る
-  - q + r + 2 − ℓ ≤ m … 全パスが 2 軌道に入る場合の容量勘定＋第3軌道帰着
-* (⇐) formula_to_completion — 十分性（パッキング構成）。約数 m を取り、
-  0 のサイクル（長さ ℓ）と 1 のサイクル（長さ m）にパスを並べ、
-  隙間を未開示点で埋め、残りを固定点にする。領域条件はここで効く
-  （容量 ≥ 迷い総頂点、アトミック性の障害は未開示点で回避）。
+**BUILD NOTE**: `QueryGame.lean` や `TwoPointClaimACert.lean` と同様、
+root（`FiniteOrderTM.lean`）からは取り込んでいない。検査は
+`lake env lean FiniteOrderTM/TwoPointClaimAGeneral.lean`。
+
+証明の構成（research/09 と research/15 の設計ノートに対応）:
+* (⇒) `inRegion_formulaSide` — **領域条件だけで式側が出る**。
+  紙の証明（完成の 1 の軌道長を経由）より短い道。機械化の副産物。
+  軌道長経由の補題（`orbit1_dvd_and_le`, `k1_succ_le_orbit1`）は
+  定理9.6 の不変量帰納で使うため残してある。
+* (⇐) `formula_to_completion` — パッキング構成。m := k₁* を取り、
+  容量不等式（`capacity_ineq`）から 2 ビン貪欲（`two_bin_pack`）で
+  迷いブロックを分け、充填を未開示点の連続区間として取り、
+  接着定理（`buildPerm_isCompletion`）へ流し込む。
 -/
 import FiniteOrderTM.TwoPointClaimA
 
@@ -1045,7 +1049,80 @@ research/09 の (⇐) の機械化。アトミック性の障害は領域条件
 theorem formula_to_completion {N ℓ : ℕ} [NeZero N] (s : AdvState)
     (hfit : s.Fits N) (hreg : InLowerRegion N ℓ s) (hℓ : 3 ≤ ℓ)
     (h : FormulaSide N ℓ s) : CompletionSide N ℓ s := by
-  sorry
+  classical
+  -- 式側の証人から ℓ < N を得る
+  obtain ⟨m0, _, _, hm0lo, hm0hi⟩ := h
+  have hm0pos : 1 ≤ m0 := le_trans (Nat.le_add_left 1 s.k1) (le_trans (le_max_left _ _) hm0lo)
+  have hlt : ℓ < N := by omega
+  -- m := k₁* を取る（約数・上界は k1Star_dvd_le）
+  obtain ⟨hmdvd, hmle⟩ := k1Star_dvd_le (ℓ := ℓ) hlt (by omega)
+  set m := PeriodicTM.TwoPointCore.k1Star N ℓ with hm_def
+  -- 領域条件を算術の形へ
+  unfold InLowerRegion at hreg
+  have hq3 : s.q + 3 ≤ ℓ := by
+    have := lt_of_lt_of_le hreg (min_le_left _ _); omega
+  have hqm : s.q + 1 ≤ m := by
+    have := lt_of_lt_of_le hreg (min_le_right _ _); omega
+  have hqdef : s.q = s.k0 + s.k1 + s.strays.sum := rfl
+  have hvcdef : s.vertexCount
+      = 2 + s.k0 + s.k1 + s.strays.sum + s.strays.length := rfl
+  -- ブロックを2ビンに詰める
+  obtain ⟨b0, b1, hb0mem, hb1mem, hcover, hp0, hp1, hcross, hc0, hc1, hsum⟩ :=
+    exists_packing (ℓ := ℓ) (m := m) s hfit.1 hq3 hqm
+  set S0 := (b0.map List.length).sum with hS0
+  set S1 := (b1.map List.length).sum with hS1
+  set vc := s.vertexCount with hvc
+  set n0 := ℓ - 1 - s.k0 - S0 with hn0
+  set n1 := m - 1 - s.k1 - S1 with hn1
+  set fill0 := List.range' vc n0 with hf0def
+  set fill1 := List.range' (vc + n0) n1 with hf1def
+  -- 充填の基本性質
+  have hf0lo : ∀ x ∈ fill0, vc ≤ x := fun x hx => (List.mem_range'_1.mp hx).1
+  have hf0hi : ∀ x ∈ fill0, x < vc + n0 := fun x hx => (List.mem_range'_1.mp hx).2
+  have hf1lo : ∀ x ∈ fill1, vc ≤ x := fun x hx => by
+    have := (List.mem_range'_1.mp hx).1; omega
+  have hf1hi : ∀ x ∈ fill1, x < vc + n0 + n1 := fun x hx => by
+    have := (List.mem_range'_1.mp hx).2; omega
+  -- ブロックの値域と Nodup
+  have hb0bd : ∀ b ∈ b0, ∀ x ∈ b, 2 + s.k0 + s.k1 ≤ x ∧ x < vc :=
+    fun b hb x hx => blocks_mem_bound s (hb0mem b hb) hx
+  have hb1bd : ∀ b ∈ b1, ∀ x ∈ b, 2 + s.k0 + s.k1 ≤ x ∧ x < vc :=
+    fun b hb x hx => blocks_mem_bound s (hb1mem b hb) hx
+  have hb0nd : ∀ b ∈ b0, b.Nodup :=
+    fun b hb => strayBlocks_nodup s.strays (2 + s.k0 + s.k1) b (hb0mem b hb)
+  have hb1nd : ∀ b ∈ b1, b.Nodup :=
+    fun b hb => strayBlocks_nodup s.strays (2 + s.k0 + s.k1) b (hb1mem b hb)
+  -- 頂点数の総和: vc + n0 + n1 = ℓ + m ≤ N
+  have htot : vc + n0 + n1 = ℓ + m := by omega
+  have hN : ℓ + m ≤ N := by omega
+  -- 接着定理の仮定を揃える
+  have hlen0 : (cycle0Verts s b0 fill0).length = ℓ := by
+    rw [cycle0Verts_length, hf0def, List.length_range']; omega
+  have hlen1 : (cycle1Verts s b1 fill1).length = m := by
+    rw [cycle1Verts_length, hf1def, List.length_range']; omega
+  have hnd0 := cycle0Verts_nodup s b0 fill0 hb0mem hp0 hb0nd List.nodup_range' hf0lo
+  have hnd1 := cycle1Verts_nodup s b1 fill1 hb1mem hp1 hb1nd List.nodup_range' hf1lo
+  have hdisj := cycles_disjoint s b0 b1 fill0 fill1 hb0bd hb1bd
+    (fun b hb c hc x hx => hcross b hb c hc hx) hf0lo hf1lo
+    (range'_disjoint (by omega))
+  have hlt0 : ∀ x ∈ cycle0Verts s b0 fill0, x < N := by
+    intro x hx
+    rcases mem_cycle0Verts s b0 fill0 hb0bd hf0lo x hx with h | h | h
+    · have : 2 + s.k0 ≤ vc := by omega
+      omega
+    · omega
+    · have := hf0hi x h.2; omega
+  have hlt1 : ∀ x ∈ cycle1Verts s b1 fill1, x < N := by
+    intro x hx
+    rcases mem_cycle1Verts s b1 fill1 hb1bd hf1lo x hx with h | h | h
+    · have : 2 + s.k0 + s.k1 ≤ vc := by omega
+      rcases h with rfl | h <;> omega
+    · omega
+    · have := hf1hi x h.2; omega
+  obtain ⟨hcomp, hdiff⟩ :=
+    buildPerm_isCompletion s b0 b1 fill0 fill1 hlen0 hlen1 hmdvd hnd0 hnd1
+      hdisj hlt0 hlt1 (edges_isAdj s b0 b1 fill0 fill1 hcover)
+  exact ⟨_, hcomp, hdiff⟩
 
 /-- 主張A（一般形）: 2 方向の合成。 -/
 theorem claimA_general {N ℓ : ℕ} [NeZero N] (hℓ : 3 ≤ ℓ) :
@@ -1055,3 +1132,7 @@ theorem claimA_general {N ℓ : ℕ} [NeZero N] (hℓ : 3 ≤ ℓ) :
     ⟨formula_to_completion s hfit hreg hℓ, completion_to_formula s hfit hreg hℓ⟩
 
 end PeriodicTM.ClaimA
+
+#print axioms PeriodicTM.ClaimA.claimA_general
+#print axioms PeriodicTM.ClaimA.formula_to_completion
+#print axioms PeriodicTM.ClaimA.inRegion_formulaSide
