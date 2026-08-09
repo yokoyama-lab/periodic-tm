@@ -1131,8 +1131,33 @@ theorem claimA_general {N ℓ : ℕ} [NeZero N] (hℓ : 3 ≤ ℓ) :
   fun s hfit hreg =>
     ⟨formula_to_completion s hfit hreg hℓ, completion_to_formula s hfit hreg hℓ⟩
 
+/-! ## 定理9.6 の下界が使う形（不変量と主張B）
+
+research/09 の下界の帰納では、状態について次の2つを保てばよい:
+(1) `|D| ≥ 2`（生存距離集合。同一軌道側。TwoPointCore の型分類が使う）
+(2) **別軌道完成が生存**（型3の恒真対を殺すのに要る）。
+主張Aの一般形から (2) が**領域内で無条件に成り立つ**ことが直ちに従う。 -/
+
+/-- **不変量 (2)**: 下界領域にいる限り、新鮮応答敵対者の状態には
+必ず別軌道完成が残る（型3の恒真対はこれで死ぬ）。 -/
+theorem completion_survives {N ℓ : ℕ} [NeZero N] (s : AdvState)
+    (hfit : s.Fits N) (hreg : InLowerRegion N ℓ s) (hℓ : 3 ≤ ℓ) :
+    CompletionSide N ℓ s :=
+  formula_to_completion s hfit hreg hℓ (inRegion_formulaSide s hfit hreg hℓ)
+
+/-- **主張B の下界形**: 別軌道シナリオを殺すには
+`q ≥ min (ℓ−2) (k₁*)` のクエリが要る（`completion_survives` の対偶）。
+研究ノート 09 の「最小殺しコスト = k₁\*」の、下界に使う向き。 -/
+theorem kill_cost_ge {N ℓ : ℕ} [NeZero N] (s : AdvState) (hfit : s.Fits N)
+    (hℓ : 3 ≤ ℓ) (hkill : ¬ CompletionSide N ℓ s) :
+    min (ℓ - 2) (PeriodicTM.TwoPointCore.k1Star N ℓ) ≤ s.q := by
+  by_contra hlt
+  exact hkill (completion_survives s hfit (by unfold InLowerRegion; omega) hℓ)
+
 end PeriodicTM.ClaimA
 
+#print axioms PeriodicTM.ClaimA.completion_survives
+#print axioms PeriodicTM.ClaimA.kill_cost_ge
 #print axioms PeriodicTM.ClaimA.claimA_general
 #print axioms PeriodicTM.ClaimA.formula_to_completion
 #print axioms PeriodicTM.ClaimA.inRegion_formulaSide
