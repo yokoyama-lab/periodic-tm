@@ -231,8 +231,51 @@ theorem completion_pow_zero {N ℓ : ℕ} [NeZero N] (s : AdvState)
     rw [hidx] at he
     rw [pow_succ', Perm.mul_apply, hprev, he]
 
+/-- P₁ の辺も状態の辺集合に含まれる。 -/
+theorem mem_edges_P1 {s : AdvState} {p : ℕ × ℕ}
+    (hp : p ∈ pathEdges 1 (2 + s.k0) s.k1) : p ∈ s.edges := by
+  unfold AdvState.edges
+  exact List.mem_append.mpr (Or.inl (List.mem_append.mpr (Or.inr hp)))
+
+/-- **P₁ 上の位置は宣言どおり**: 任意の完成で `1` から `a+1` 歩進んだ点は
+頂点番号 `2 + k₀ + a`（`a < k₁`）。 -/
+theorem completion_pow_one {N ℓ : ℕ} [NeZero N] (s : AdvState)
+    (f : Perm (Fin N)) (hcomp : IsCompletion N ℓ s f) :
+    ∀ a, a < s.k1 →
+      (f ^ (a + 1)) (Fin.ofNat N 1) = Fin.ofNat N (2 + s.k0 + a) := by
+  intro a
+  induction a with
+  | zero =>
+    intro h
+    have he := hcomp.2.2 _
+      (mem_edges_P1 (pathEdges_mem (a := 1) (next := 2 + s.k0) h))
+    rw [if_pos rfl] at he
+    simpa using he
+  | succ a ih =>
+    intro h
+    have hprev := ih (by omega)
+    have he := hcomp.2.2 _
+      (mem_edges_P1 (pathEdges_mem (a := 1) (next := 2 + s.k0) h))
+    rw [if_neg (by omega : ¬ a + 1 = 0)] at he
+    have hidx : 2 + s.k0 + (a + 1) - 1 = 2 + s.k0 + a := by omega
+    rw [hidx] at he
+    rw [pow_succ', Perm.mul_apply, hprev, he]
+
+/-- **同一軌道完成での P₁ 側の絶対位置**: `1 = f^d(0)` なら、
+`classify` が `onP1 (a+1)` と読む頂点の位置は `d + (a+1)`。
+これは補題9.4 の型3・型4 の `d + α` の形そのもの。 -/
+theorem completion_onP1_pos {N ℓ : ℕ} [NeZero N] (s : AdvState)
+    (f : Perm (Fin N)) (hcomp : IsCompletion N ℓ s f) {d : ℕ}
+    (hd : Fin.ofNat N 1 = (f ^ d) (Fin.ofNat N 0)) :
+    ∀ a, a < s.k1 →
+      (f ^ ((a + 1) + d)) (Fin.ofNat N 0) = Fin.ofNat N (2 + s.k0 + a) := by
+  intro a ha
+  rw [pow_add, Perm.mul_apply, ← hd]
+  exact completion_pow_one s f hcomp a ha
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.completion_onP1_pos
 #print axioms PeriodicTM.ClaimA.completion_pow_zero
 #print axioms PeriodicTM.ClaimA.play_inLowerRegion
