@@ -914,9 +914,53 @@ theorem concStep_used_nodup {N : ℕ} (c : ConcState N) (x : Fin N)
         exact freshVertex_not_mem hfresh ha
       exact List.Nodup.append h (List.nodup_singleton v) hdisj
 
+/-- **未使用頂点は残っている**: 開示済みが `N` 個未満なら新鮮な点が取れる。 -/
+theorem freshVertex_isSome {N : ℕ} {used : List (Fin N)} (hnd : used.Nodup)
+    (h : used.length < N) : ∃ v, freshVertex N used = some v := by
+  rcases hfind : freshVertex N used with _ | v
+  · exfalso
+    have hall : ∀ a ∈ List.finRange N, ¬ (a ∉ used) := by
+      intro a ha
+      have := List.find?_eq_none.mp hfind a ha
+      simpa using this
+    have hsub : (Finset.univ : Finset (Fin N)) ⊆ used.toFinset := by
+      intro a _
+      rw [List.mem_toFinset]
+      by_contra hc
+      exact hall a (List.mem_finRange a) hc
+    have hcard : (Finset.univ : Finset (Fin N)).card ≤ used.toFinset.card :=
+      Finset.card_le_card hsub
+    rw [List.toFinset_card_of_nodup hnd] at hcard
+    simp at hcard
+    omega
+  · exact ⟨v, rfl⟩
+
+/-- **答えは辺として記録される**: 1手進めた状態の辺集合には
+`(x, concAnswer c x)` が入っている。したがって「最終状態の辺をすべて
+尊重する完成」は、各手の答えとも一致する（`Agrees` の核）。 -/
+theorem concAnswer_mem_edges {N : ℕ} (c : ConcState N) (x : Fin N)
+    (hnd : c.used.Nodup) (h : c.used.length < N) :
+    (x, concAnswer c x) ∈ (concStep c x).edges := by
+  unfold concAnswer concStep
+  cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+  | some p =>
+    have hp := List.mem_of_find?_eq_some hfind
+    have hx : p.1 = x := by
+      have := List.find?_some hfind
+      simpa using this
+    -- `(x, p.2) = p`（Prod の eta と `hx : p.1 = x`）
+    have heq : (x, p.2) = p := by rw [← hx]
+    rw [heq]
+    exact hp
+  | none =>
+    obtain ⟨v, hv⟩ := freshVertex_isSome hnd h
+    simp only [hv]
+    simp
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.concAnswer_mem_edges
 #print axioms PeriodicTM.ClaimA.concStep_used_nodup
 #print axioms PeriodicTM.ClaimA.exists_relabeling_fixing
 #print axioms PeriodicTM.ClaimA.isCompletion_conj
