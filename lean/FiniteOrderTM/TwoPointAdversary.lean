@@ -18,7 +18,7 @@ import FiniteOrderTM.TwoPointBridge
 
 namespace PeriodicTM.ClaimA
 
-open Equiv
+open Equiv Finset
 
 /-! ### リストの1点更新（`strays` の第 i 本を伸ばす） -/
 
@@ -581,9 +581,56 @@ theorem sameCyclePerm_pow_eq_one_vertex {N : ℕ} [NeZero N] (s : AdvState)
   rw [Option.some.inj h0, Option.some.inj h1]
   exact key
 
+/-! ### GoodOutput から座標関係へ（型1・2・4 を殺す入口）
+
+`GoodOutput` の反射 `ι` を橋渡し（`reflection_pos_relation`）に通すと、
+出力対の位置 `(α, β)` が距離 `d` に対して `β = α − d` を満たすことが
+出る。距離が 2 つ残っていればこの関係は両立せず、
+`survives_two_distances` により型3 以外は死ぬ。 -/
+
+/-- **良い出力の位置関係**: `v₀ = f^α(0)`、`v₁ = f^β(0)`、`1 = f^d(0)`
+のとき、`GoodOutput` なら `β = α − d`（`ZMod ℓ`）。 -/
+theorem goodOutput_pos_relation {N ℓ : ℕ} [NeZero N] {f : Perm (Fin N)}
+    (hcard : #{y | f.SameCycle (0 : Fin N) y} = ℓ)
+    {α β d : ℕ} {v₀ v₁ : Fin N}
+    (hv₀ : v₀ = (f ^ α) (0 : Fin N)) (hv₁ : v₁ = (f ^ β) (0 : Fin N))
+    (hd : (1 : Fin N) = (f ^ d) (0 : Fin N))
+    (hgood : PeriodicTM.QueryGame.GoodOutput (0 : Fin N) 1 f v₀ v₁) :
+    (β : ZMod ℓ) = (α : ZMod ℓ) - (d : ZMod ℓ) := by
+  obtain ⟨ι, ⟨hinv, _, hcc⟩, ha, hb⟩ := hgood
+  refine PeriodicTM.TwoPointBridge.reflection_pos_relation hinv hcc hcard
+    ?_ ?_
+  · rw [ha, hv₀]
+  · rw [hd] at hb
+    rw [hb, hv₁]
+
+/-- **2つの距離で同時に良い出力は存在しない（位置が同じ場合）**:
+`v₀`・`v₁` の位置が距離に依らない（＝ともに P₀ 側＝型1）なら、
+`d` と `d+1` の両方で良い出力にはなれない。 -/
+theorem type1_killed_two_distances {N ℓ : ℕ} [NeZero N] (hℓ : 3 ≤ ℓ)
+    {f g : Perm (Fin N)}
+    (hcardf : #{y | f.SameCycle (0 : Fin N) y} = ℓ)
+    (hcardg : #{y | g.SameCycle (0 : Fin N) y} = ℓ)
+    {α β d : ℕ} {v₀ v₁ : Fin N}
+    (hv₀f : v₀ = (f ^ α) (0 : Fin N)) (hv₁f : v₁ = (f ^ β) (0 : Fin N))
+    (hv₀g : v₀ = (g ^ α) (0 : Fin N)) (hv₁g : v₁ = (g ^ β) (0 : Fin N))
+    (hdf : (1 : Fin N) = (f ^ d) (0 : Fin N))
+    (hdg : (1 : Fin N) = (g ^ (d + 1)) (0 : Fin N))
+    (hgf : PeriodicTM.QueryGame.GoodOutput (0 : Fin N) 1 f v₀ v₁)
+    (hgg : PeriodicTM.QueryGame.GoodOutput (0 : Fin N) 1 g v₀ v₁) :
+    False := by
+  haveI : Fact (1 < ℓ) := ⟨by omega⟩
+  have h1 := goodOutput_pos_relation hcardf hv₀f hv₁f hdf hgf
+  have h2 := goodOutput_pos_relation hcardg hv₀g hv₁g hdg hgg
+  -- β = α − d と β = α − (d+1) から 1 = 0（ZMod ℓ）
+  push_cast at h2
+  have : (1 : ZMod ℓ) = 0 := by linear_combination h2 - h1
+  exact one_ne_zero this
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.type1_killed_two_distances
 #print axioms PeriodicTM.ClaimA.sameCyclePerm_pow_eq_one_vertex
 #print axioms PeriodicTM.ClaimA.sameCyclePerm_isCompletion
 #print axioms PeriodicTM.ClaimA.sameCycleVerts_nodup
