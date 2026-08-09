@@ -859,9 +859,65 @@ theorem exists_relabeling_fixing {N m : ℕ} [NeZero N] (u v : Fin m → Fin N)
   · have h := hτ i1
     rwa [hu1, hv1] at h
 
+/-! ### allocation 順の具体状態（`research/17` の手順2）
+
+対局中に実際に現れる標識を、開示された順に持つ状態。抽象状態
+`AdvState`（形だけを持つ）とは別に、`Fin N` の具体的な頂点と辺を記録する。
+`used` が Nodup なのが要（付け替え `τ` を作るための単射性）。 -/
+
+/-- 対局中の具体状態: 開示済み頂点（allocation 順）と開示済み辺。 -/
+structure ConcState (N : ℕ) where
+  used : List (Fin N)
+  edges : List (Fin N × Fin N)
+
+/-- まだ使っていない頂点のうち最小のもの。 -/
+def freshVertex (N : ℕ) (used : List (Fin N)) : Option (Fin N) :=
+  (List.finRange N).find? (fun v => decide (v ∉ used))
+
+/-- 新鮮な頂点は未使用（`find?` の述語から）。 -/
+theorem freshVertex_not_mem {N : ℕ} {used : List (Fin N)} {v : Fin N}
+    (h : freshVertex N used = some v) : v ∉ used := by
+  have hp := List.find?_some h
+  simpa using hp
+
+/-- 新鮮応答: 既に答えの決まっている点はその答え、そうでなければ
+未使用の頂点を1つ割り当てる。 -/
+def concAnswer {N : ℕ} (c : ConcState N) (x : Fin N) : Fin N :=
+  match c.edges.find? (fun p => decide (p.1 = x)) with
+  | some p => p.2
+  | none => (freshVertex N c.used).getD x
+
+/-- 具体状態の更新（新しい点を開示したときだけ伸びる）。 -/
+def concStep {N : ℕ} (c : ConcState N) (x : Fin N) : ConcState N :=
+  match c.edges.find? (fun p => decide (p.1 = x)) with
+  | some _ => c
+  | none =>
+      match freshVertex N c.used with
+      | some v => ⟨c.used ++ [v], c.edges ++ [(x, v)]⟩
+      | none => c
+
+/-- **allocation 順の標識は重複しない**: `used` は Nodup を保つ。
+これが付け替え `τ` を作るための単射性を与える。 -/
+theorem concStep_used_nodup {N : ℕ} (c : ConcState N) (x : Fin N)
+    (h : c.used.Nodup) : (concStep c x).used.Nodup := by
+  unfold concStep
+  cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+  | some p => simpa using h
+  | none =>
+    cases hfresh : freshVertex N c.used with
+    | none => simpa using h
+    | some v =>
+      have hdisj : List.Disjoint c.used [v] := by
+        intro a ha hb
+        rw [List.mem_singleton] at hb
+        subst hb
+        exact freshVertex_not_mem hfresh ha
+      exact List.Nodup.append h (List.nodup_singleton v) hdisj
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.concStep_used_nodup
 #print axioms PeriodicTM.ClaimA.exists_relabeling_fixing
 #print axioms PeriodicTM.ClaimA.isCompletion_conj
 #print axioms PeriodicTM.ClaimA.orbit_card_conj
