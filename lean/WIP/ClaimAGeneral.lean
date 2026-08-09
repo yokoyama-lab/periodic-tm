@@ -584,20 +584,64 @@ theorem mul_pow_apply_of_mem {l₁ l₂ : List α} (hd : List.Disjoint l₁ l₂
       List.formPerm_apply_of_notMem (hd hx)]
     exact ih (List.formPerm_apply_mem_of_mem hx)
 
-/-- 同じ Nodup リスト上の 2 点は `formPerm` の同一軌道にある
-（`i` から `j` へは `j + (len − i)` 歩）。 -/
-theorem formPerm_sameCycle {l : List α} (hl : l.Nodup) {x y : α}
-    (hx : x ∈ l) (hy : y ∈ l) : Perm.SameCycle l.formPerm x y := by
+/-- 同じ Nodup リスト上の 2 点は**自然数**歩で到達できる
+（`i` から `j` へは `j + (len − i)` 歩。mod を避ける歩数の取り方）。 -/
+theorem formPerm_exists_pow {l : List α} (hl : l.Nodup) {x y : α}
+    (hx : x ∈ l) (hy : y ∈ l) : ∃ k : ℕ, (l.formPerm ^ k) x = y := by
   obtain ⟨i, hi, rfl⟩ := List.getElem_of_mem hx
   obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hy
-  refine ⟨((j + (l.length - i) : ℕ) : ℤ), ?_⟩
-  rw [zpow_natCast, List.formPerm_pow_apply_getElem l hl]
+  refine ⟨j + (l.length - i), ?_⟩
+  rw [List.formPerm_pow_apply_getElem l hl]
   have hidx : (i + (j + (l.length - i))) % l.length = j := by
-    have : i + (j + (l.length - i)) = j + l.length := by omega
-    rw [this, Nat.add_mod_right, Nat.mod_eq_of_lt hj]
+    have h : i + (j + (l.length - i)) = j + l.length := by omega
+    rw [h, Nat.add_mod_right, Nat.mod_eq_of_lt hj]
   simp [hidx]
 
+/-- 同じ Nodup リスト上の 2 点は `formPerm` の同一軌道にある。 -/
+theorem formPerm_sameCycle {l : List α} (hl : l.Nodup) {x y : α}
+    (hx : x ∈ l) (hy : y ∈ l) : Perm.SameCycle l.formPerm x y := by
+  obtain ⟨k, hk⟩ := formPerm_exists_pow hl hx hy
+  exact ⟨(k : ℤ), by rw [zpow_natCast]; exact hk⟩
+
+/-- **軌道は自分のサイクルに閉じている**: `l₁` の点から積で到達できる
+点は `l₁` の中だけ。有限性で `zpow` を `npow` に落として
+`mul_pow_apply_of_mem` と `formPerm_pow_mem` を使う。 -/
+theorem sameCycle_mem_of_mem [Finite α] {l₁ l₂ : List α}
+    (hd : List.Disjoint l₁ l₂) {x y : α} (hx : x ∈ l₁)
+    (h : Perm.SameCycle (l₁.formPerm * l₂.formPerm) x y) : y ∈ l₁ := by
+  obtain ⟨i, _, rfl⟩ := h.exists_pow_eq'
+  rw [mul_pow_apply_of_mem hd i hx]
+  exact formPerm_pow_mem hx i
+
 end FormPerm
+
+/-! ### 軌道の同定（`IsCompletion` の「軌道長 = ℓ」と「別軌道」） -/
+
+/-- **軌道 = 自分のサイクルのリスト**（Finset として）。 -/
+theorem orbit_eq_toFinset {N : ℕ} {l₁ l₂ : List (Fin N)} (hl : l₁.Nodup)
+    (hd : List.Disjoint l₁ l₂) {x : Fin N} (hx : x ∈ l₁) :
+    ({y | (l₁.formPerm * l₂.formPerm).SameCycle x y} : Finset (Fin N))
+      = l₁.toFinset := by
+  ext y
+  simp only [Finset.mem_filter, Finset.mem_univ, true_and, List.mem_toFinset]
+  constructor
+  · exact fun h => sameCycle_mem_of_mem hd hx h
+  · intro hy
+    obtain ⟨k, hk⟩ := formPerm_exists_pow hl hx hy
+    exact ⟨(k : ℤ), by rw [zpow_natCast, mul_pow_apply_of_mem hd k hx]; exact hk⟩
+
+/-- **軌道長 = リスト長**（`Valid` の `#{y | SameCycle 0 y} = ℓ` の形）。 -/
+theorem orbit_card {N : ℕ} {l₁ l₂ : List (Fin N)} (hl : l₁.Nodup)
+    (hd : List.Disjoint l₁ l₂) {x : Fin N} (hx : x ∈ l₁) :
+    #{y | (l₁.formPerm * l₂.formPerm).SameCycle x y} = l₁.length := by
+  rw [orbit_eq_toFinset hl hd hx, List.toFinset_card_of_nodup hl]
+
+/-- **0 と 1 は別軌道**: `1` は `l₁` の外にあるので、`l₁` に閉じた
+軌道からは届かない。 -/
+theorem not_sameCycle_of_notMem {N : ℕ} {l₁ l₂ : List (Fin N)}
+    (hd : List.Disjoint l₁ l₂) {x y : Fin N} (hx : x ∈ l₁) (hy : y ∉ l₁) :
+    ¬ (l₁.formPerm * l₂.formPerm).SameCycle x y :=
+  fun h => hy (sameCycle_mem_of_mem hd hx h)
 
 /-- `Fin.ofNat N` は `[0, N)` 上で単射（構成リストの Nodup を
 `Fin N` へ移すのに使う）。 -/
