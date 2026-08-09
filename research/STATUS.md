@@ -28,7 +28,7 @@
 | ITM 1マス完全性 | writeHead iff・completenessGoal_oneCell | **1 [Lean済]** | `Involutory.lean` |
 | 文字列橋渡し | StringInvolutory・閉包(a)・applyHead 橋 | **1 [Lean済]** | `InvolutoryString.lean` |
 | KMachine⇔TM0 輸送 | 双模倣 ofK/toK・共役合成の構文的対合性 | **1 [Lean済]** | `InvolutoryTransport.lean` |
-| 定理9.6 下界の葉での撃墜（具体側） | 型3は別軌道完成で（`type3_output_killed`）、型1・2・4 は距離 d と d+1 の同一軌道完成2本で（`type{1,2,4}_killed_two_distances`）死ぬ。同一軌道完成の構成（`sameCyclePerm_isCompletion`）と距離の実現（`sameCyclePerm_pow_eq_one_vertex`）も済み | **1 [Lean済]** | `TwoPointAdversary.lean`（root 非取込）。残るのは木の帰納で状態と完成を対応づける組み立てのみ |
+| 定理9.6 下界の葉での撃墜（具体側） | 型3は別軌道完成で（`type3_output_killed`）、型1・2・4 は距離 d と d+1 の同一軌道完成2本で（`type{1,2,4}_killed_two_distances`）死ぬ。同一軌道完成の構成（`sameCyclePerm_isCompletion`）と距離の実現（`sameCyclePerm_pow_eq_one_vertex`）も済み | **1 [Lean済]** | `TwoPointAdversary.lean`（root 非取込）。残るのは木の帰納の最終段のみ。ただし頂点番号がグループ順のため状態成長で動く問題があり、付け替え（relabeling）の輸送補題が要る（`research/17`）|
 | 定理9.6 の橋渡し（roadmap 1・2） | 位置座標 `f^i x = f^j x ↔ (i:ZMod ℓ)=j`／反射の共役関係／反射の出力対が `SameCycleValid`（＝補題9.4 の有効性条件）を満たすこと | **1 [Lean済]** | `TwoPointBridge.lean`（root 非取込）。これで型分類 type1〜4 が具体側の出力対に適用可能。残るは Tree 帰納（roadmap 5）と上界の構成（6） |
 | 下界の不変量(2)＋主張B（下界形） | 領域内では別軌道完成が必ず生存（型3恒真対を殺せる）／別軌道を殺すには q ≥ min(ℓ−2, k₁\*) | **1 [Lean済]** | `TwoPointClaimAGeneral.lean` の `completion_survives` / `kill_cost_ge`（主張A一般形の系） |
 | **補題 9.7 主張A（一般）** | 下界領域内で FormulaSide ↔ CompletionSide。(⇒) は領域条件のみから、(⇐) はパッキング構成（k₁\* 選択・2ビン貪欲・充填＝未開示点の連続区間） | **1 [Lean済]** | `TwoPointClaimAGeneral.lean`（sorry 0・公理は propext/Classical.choice/Quot.sound のみ、末尾の `#print axioms` が毎回確認）。root 非取込につき `lake env lean FiniteOrderTM/TwoPointClaimAGeneral.lean` で検査 |
