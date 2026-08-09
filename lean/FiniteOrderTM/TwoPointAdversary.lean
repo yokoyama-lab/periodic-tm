@@ -673,9 +673,63 @@ theorem type4_killed_two_distances {N ℓ : ℕ} [NeZero N] (hℓ : 3 ≤ ℓ)
   have hone : (1 : ZMod ℓ) = 0 := by linear_combination h2 - h1
   exact one_ne_zero hone
 
+/-! ### 対局と実行の一致（葉での撃墜を木全体へ渡す）
+
+敵対者の答えと完成 `f` の値が各手で一致していれば、木を `f` に対して
+走らせたときに辿り着く葉は、対局で辿った葉と同じ。したがって
+「対局が辿った葉の出力が `f` に対して良くない」ことを示せば、
+その木は `f` に負ける。 -/
+
+/-- 対局が辿り着く葉の出力対。 -/
+def playLeaf {N : ℕ} (σ : Strategy N) :
+    {q : ℕ} → PeriodicTM.QueryGame.Tree N q → AdvState → Fin N × Fin N
+  | _, .leaf v₀ v₁, _ => (v₀, v₁)
+  | _, .node x child, s =>
+      playLeaf σ (child (σ.answer s x)) (s.step (σ.kind s x))
+
+/-- 完成 `f` が対局の答えと各手で一致する。 -/
+def Agrees {N : ℕ} (σ : Strategy N) (f : Perm (Fin N)) :
+    {q : ℕ} → PeriodicTM.QueryGame.Tree N q → AdvState → Prop
+  | _, .leaf _ _, _ => True
+  | _, .node x child, s =>
+      f x = σ.answer s x ∧
+        Agrees σ f (child (σ.answer s x)) (s.step (σ.kind s x))
+
+/-- **一致すれば同じ葉に着く**: `Runs`（木を `f` に対して走らせる）は、
+対局が辿った葉の出力が `f` にとって良いことと同値。 -/
+theorem runs_iff_goodOutput_playLeaf {N : ℕ} (a b : Fin N) (σ : Strategy N)
+    (f : Perm (Fin N)) :
+    ∀ {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (s : AdvState),
+      Agrees σ f t s →
+      (PeriodicTM.QueryGame.Runs a b t f ↔
+        PeriodicTM.QueryGame.GoodOutput a b f (playLeaf σ t s).1
+          (playLeaf σ t s).2)
+  | _, .leaf v₀ v₁, s, _ => Iff.rfl
+  | _, .node x child, s, h => by
+    obtain ⟨hx, hrest⟩ := h
+    show PeriodicTM.QueryGame.Runs a b (child (f x)) f ↔ _
+    rw [hx]
+    exact runs_iff_goodOutput_playLeaf a b σ f (child (σ.answer s x))
+      (s.step (σ.kind s x)) hrest
+
+/-- **木が勝てないことの十分条件**: 対局が辿った葉の出力が、
+対局と一致するある完成 `f`（約束を満たす）に対して良くなければ、
+その木は勝利戦略ではない。 -/
+theorem not_winsAt_of_bad_leaf {N n ℓ : ℕ} (a b : Fin N) (σ : Strategy N)
+    {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (s : AdvState)
+    (f : Perm (Fin N)) (hvalid : PeriodicTM.QueryGame.Valid n ℓ a f)
+    (hagree : Agrees σ f t s)
+    (hbad : ¬ PeriodicTM.QueryGame.GoodOutput a b f (playLeaf σ t s).1
+      (playLeaf σ t s).2) :
+    ¬ PeriodicTM.QueryGame.WinsAt n ℓ a b t := by
+  intro hwin
+  exact hbad ((runs_iff_goodOutput_playLeaf a b σ f t s hagree).mp
+    (hwin f hvalid))
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.not_winsAt_of_bad_leaf
 #print axioms PeriodicTM.ClaimA.type2_killed_two_distances
 #print axioms PeriodicTM.ClaimA.type4_killed_two_distances
 #print axioms PeriodicTM.ClaimA.type1_killed_two_distances
