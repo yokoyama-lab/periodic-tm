@@ -903,6 +903,42 @@ theorem capacity_ineq {ℓ m : ℕ} (s : AdvState) (hstray : ∀ j ∈ s.strays,
   unfold AdvState.q at hq hm
   omega
 
+/-- ブロック列は互いに素（`strayBlocks_pairwise` を `List.Disjoint` の形に）。 -/
+theorem blocks_pairwise_disjoint (s : AdvState) :
+    s.blocks.Pairwise List.Disjoint :=
+  strayBlocks_pairwise s.strays (2 + s.k0 + s.k1)
+
+/-- **パッキングデータの取り出し**: 領域条件のもとで、ブロックを
+2 つのビンに分け、必要な性質（被覆・所属・互いに素・容量・総和保存）を
+すべて備えた `b0`, `b1` が取れる。 -/
+theorem exists_packing {ℓ m : ℕ} (s : AdvState) (hstray : ∀ j ∈ s.strays, 1 ≤ j)
+    (hq : s.q + 3 ≤ ℓ) (hm : s.q + 1 ≤ m) :
+    ∃ b0 b1 : List (List ℕ),
+      (∀ b ∈ b0, b ∈ s.blocks) ∧ (∀ b ∈ b1, b ∈ s.blocks) ∧
+      (∀ b ∈ s.blocks, b ∈ b0 ∨ b ∈ b1) ∧
+      b0.Pairwise List.Disjoint ∧ b1.Pairwise List.Disjoint ∧
+      (∀ b ∈ b0, ∀ c ∈ b1, List.Disjoint b c) ∧
+      (b0.map List.length).sum ≤ ℓ - 1 - s.k0 ∧
+      (b1.map List.length).sum ≤ m - 1 - s.k1 ∧
+      (b0.map List.length).sum + (b1.map List.length).sum
+        = s.strays.sum + s.strays.length := by
+  obtain ⟨b0, b1, hperm, h0, h1⟩ :=
+    two_bin_pack List.length s.blocks (ℓ - 1 - s.k0) (m - 1 - s.k1)
+      (capacity_ineq s hstray hq hm)
+  -- `pairwise_iff` の対称性引数は暗黙ラムダ側で受けるので `@` が要る
+  have hpw : (b0 ++ b1).Pairwise List.Disjoint :=
+    (hperm.pairwise_iff (@fun _ _ h => List.Disjoint.symm h)).mpr
+      (blocks_pairwise_disjoint s)
+  obtain ⟨hp0, hp1, hcross⟩ := List.pairwise_append.mp hpw
+  refine ⟨b0, b1, ?_, ?_, ?_, hp0, hp1, hcross, h0, h1, ?_⟩
+  · exact fun b hb => hperm.mem_iff.mp (List.mem_append.mpr (Or.inl hb))
+  · exact fun b hb => hperm.mem_iff.mp (List.mem_append.mpr (Or.inr hb))
+  · exact fun b hb => List.mem_append.mp (hperm.mem_iff.mpr hb)
+  · have hsum : ((b0 ++ b1).map List.length).sum
+        = (s.blocks.map List.length).sum := (hperm.map List.length).sum_eq
+    rw [List.map_append, List.sum_append] at hsum
+    rw [hsum, blocks_length_sum]
+
 /-- 迷いパスの辺は、必ず**どれか1つのブロックの中**の隣接。 -/
 theorem strayEdges_mem_block :
     ∀ (l : List ℕ) (next : ℕ), ∀ p ∈ strayEdges next l,
