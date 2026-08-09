@@ -799,6 +799,51 @@ theorem ofNat_disjoint {N : ℕ} [NeZero N] {l₁ l₂ : List ℕ}
   rw [Nat.mod_eq_of_lt (h₁ x hx), Nat.mod_eq_of_lt (h₂ y hy)] at hval
   exact hd hx (hval ▸ hy)
 
+/-! ### 長さの勘定と充填（fill）の作り方
+
+充填は未開示点の連続区間から取る: `fill0 = range' vc n₀`、
+`fill1 = range' (vc + n₀) n₁`。これで Nodup・相互素・値域が
+すべて区間の算術で片づく。 -/
+
+/-- ずれた連続区間どうしは交わらない。 -/
+theorem range'_disjoint {a n b m : ℕ} (h : a + n ≤ b) :
+    List.Disjoint (List.range' a n) (List.range' b m) := by
+  intro x hx hx'
+  have h1 := List.mem_range'_1.mp hx
+  have h2 := List.mem_range'_1.mp hx'
+  omega
+
+/-- 各要素に 1 を足したリストの総和。 -/
+theorem sum_map_succ (l : List ℕ) :
+    (l.map (· + 1)).sum = l.sum + l.length := by
+  induction l with
+  | nil => simp
+  | cons a t ih => simp only [List.map_cons, List.sum_cons, List.length_cons, ih]; omega
+
+/-- **迷いブロックの総頂点数** `V₀ = Σjᵢ + r`（研究ノート 09 の記号）。 -/
+theorem blocks_length_sum (s : AdvState) :
+    (s.blocks.map List.length).sum = s.strays.sum + s.strays.length := by
+  unfold AdvState.blocks
+  rw [strayBlocks_length_map, sum_map_succ]
+
+/-- サイクル 0 の長さ。 -/
+theorem cycle0Verts_length (s : AdvState) (b0 : List (List ℕ))
+    (fill0 : List ℕ) :
+    (cycle0Verts s b0 fill0).length
+      = 1 + s.k0 + (b0.map List.length).sum + fill0.length := by
+  unfold cycle0Verts
+  simp [List.length_append, List.length_range', List.length_flatten]
+  omega
+
+/-- サイクル 1 の長さ。 -/
+theorem cycle1Verts_length (s : AdvState) (b1 : List (List ℕ))
+    (fill1 : List ℕ) :
+    (cycle1Verts s b1 fill1).length
+      = 1 + s.k1 + (b1.map List.length).sum + fill1.length := by
+  unfold cycle1Verts
+  simp [List.length_append, List.length_range', List.length_flatten]
+  omega
+
 /-- 迷いパスの辺は、必ず**どれか1つのブロックの中**の隣接。 -/
 theorem strayEdges_mem_block :
     ∀ (l : List ℕ) (next : ℕ), ∀ p ∈ strayEdges next l,

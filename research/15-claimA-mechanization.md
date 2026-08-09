@@ -79,6 +79,32 @@ Lean 化の現状は `research/STATUS.md` と `lean/WIP/ClaimAGeneral.lean`。
   sum+max ≥ 2a > c₀+c₁ の矛盾）→ Lean 済: `two_bin_pack`
   （分割の存在を Perm 付きで返す）
 
+## 機械化の現況（2026-08-09、ループ20周目）
+
+`lean/WIP/ClaimAGeneral.lean` の sorry は **`formula_to_completion` の1個だけ**。
+そこに至る部品はすべて証明済み:
+
+| 部品 | 内容 |
+|---|---|
+| `inRegion_formulaSide` | (⇒) 完了（領域条件だけで式側が出る） |
+| `k1Star_dvd_le` | m := k₁\* が ℓ の約数かつ ≤ N−ℓ |
+| `two_bin_pack` | 総和+最大 ≤ 容量和 なら2ビンに詰められる（Perm 付き） |
+| `cycle0/1Verts_nodup`・`cycles_disjoint` | 構成リストの Nodup と相互素 |
+| `formPerm_mul_pow_eq_one` ほか | 位数条件 `f^ℓ = 1` |
+| `orbit_card`・`not_sameCycle_of_notMem` | 軌道長と別軌道 |
+| `IsAdj` 一式・`edges_isAdj` | 開示辺の拡張（辺→隣接→formPerm） |
+| **`buildPerm_isCompletion`** | **上記を束ねる接着定理**（構造的仮定 → IsCompletion ∧ 別軌道） |
+| `cycle0/1Verts_length`・`blocks_length_sum`・`range'_disjoint` | 長さ勘定と充填の道具 |
+
+残る作業は「接着定理の仮定を実際に供給する」ことだけ:
+1. `m := k1Star N ℓ` を取る（約数性・上界は `k1Star_dvd_le`）
+2. 容量不等式 `V₀ + maxsize ≤ c₀ + c₁` を領域条件から導く（純算術。
+   導出は上の「発見2」に記載。`blocks_length_sum` で V₀ = Σj + r）
+3. `two_bin_pack` で `s.blocks` を `b0 ++ b1` に分割
+4. 充填を `fill0 = range' vc n₀`、`fill1 = range' (vc+n₀) n₁` と定義し、
+   `cycle0/1Verts_length` で長さを ℓ と m に合わせる
+5. `buildPerm_isCompletion` に流し込む
+
 ## 次の一手（優先順）
 
 1. ~~python 全数検査で割当規則を確定~~ **済**（上記）
