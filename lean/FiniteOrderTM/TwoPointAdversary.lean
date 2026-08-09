@@ -800,9 +800,43 @@ theorem orbit_card_conj {N : ℕ} (τ f : Perm (Fin N)) (x : Fin N) :
       exact (sameCycle_conj_iff τ f x w).mpr hw
   rw [hset, Finset.card_map]
 
+/-- **共役した置換は付け替え先の完成**: `τ` が指定点 `0` を固定するなら、
+`τ f τ⁻¹` は位数条件と軌道長条件を満たし、辺は `τ` で写した先を尊重する。
+（`research/17` の手順1の到達点。グループ順で作った完成を、対局に
+現れた標識へ運ぶ。） -/
+theorem isCompletion_conj {N ℓ : ℕ} [NeZero N] (s : AdvState)
+    (τ f : Perm (Fin N)) (hτ0 : τ (0 : Fin N) = 0)
+    (hcomp : IsCompletion N ℓ s f) :
+    (τ * f * τ⁻¹) ^ ℓ = 1 ∧
+      #{y | (τ * f * τ⁻¹).SameCycle (0 : Fin N) y} = ℓ ∧
+      ∀ p ∈ s.edges, (τ * f * τ⁻¹) (τ (Fin.ofNat N p.1))
+        = τ (Fin.ofNat N p.2) := by
+  obtain ⟨hpow, hcard, hedge⟩ := hcomp
+  refine ⟨conj_pow_eq_one τ f hpow, ?_, ?_⟩
+  · have h := orbit_card_conj τ f (0 : Fin N)
+    rw [hτ0] at h
+    rw [h, hcard]
+  · intro p hp
+    -- 注: `Perm.inv_apply_self` という名前は無い（exact? で確認）。
+    -- τ⁻¹(τ x) = x は `Perm.inv_eq_iff_eq.mpr rfl` で出る
+    have hinv : ∀ x : Fin N, τ⁻¹ (τ x) = x :=
+      fun x => Perm.inv_eq_iff_eq.mpr rfl
+    simp only [Perm.mul_apply, hinv]
+    rw [hedge p hp]
+
+/-- 別軌道性も共役で保たれる（`τ` が `0` と `1` を固定するとき）。 -/
+theorem not_sameCycle_conj {N : ℕ} [NeZero N] (τ f : Perm (Fin N))
+    (hτ0 : τ (0 : Fin N) = 0) (hτ1 : τ (1 : Fin N) = 1)
+    (h : ¬ f.SameCycle (0 : Fin N) 1) :
+    ¬ (τ * f * τ⁻¹).SameCycle (0 : Fin N) 1 := by
+  intro hc
+  refine h ((sameCycle_conj_iff τ f 0 1).mp ?_)
+  rwa [hτ0, hτ1]
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.isCompletion_conj
 #print axioms PeriodicTM.ClaimA.orbit_card_conj
 #print axioms PeriodicTM.ClaimA.goodOutput_conj
 #print axioms PeriodicTM.ClaimA.not_winsAt_of_bad_leaf
