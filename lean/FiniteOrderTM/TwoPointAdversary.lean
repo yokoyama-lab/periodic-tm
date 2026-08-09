@@ -771,9 +771,39 @@ theorem conj_pow_eq_one {N ℓ : ℕ} (τ f : Perm (Fin N)) (h : f ^ ℓ = 1) :
     (τ * f * τ⁻¹) ^ ℓ = 1 := by
   rw [conj_pow, h]; group
 
+/-- 同一軌道関係は共役で移る（両方向）。 -/
+theorem sameCycle_conj_iff {N : ℕ} (τ f : Perm (Fin N)) (x y : Fin N) :
+    (τ * f * τ⁻¹).SameCycle (τ x) (τ y) ↔ f.SameCycle x y := by
+  constructor
+  · intro h
+    have h2 := h.conj (g := τ⁻¹)
+    have heq : τ⁻¹ * (τ * f * τ⁻¹) * τ⁻¹⁻¹ = f := by group
+    rw [heq] at h2
+    simpa using h2
+  · intro h
+    exact h.conj
+
+/-- **軌道の大きさは共役で保たれる**（`τ` による全単射で移る）。
+`IsCompletion` の軌道長条件を付け替え先へ運ぶのに使う。 -/
+theorem orbit_card_conj {N : ℕ} (τ f : Perm (Fin N)) (x : Fin N) :
+    #{y | (τ * f * τ⁻¹).SameCycle (τ x) y} = #{y | f.SameCycle x y} := by
+  have hset : ({y | (τ * f * τ⁻¹).SameCycle (τ x) y} : Finset (Fin N))
+      = ({y | f.SameCycle x y} : Finset (Fin N)).map τ.toEmbedding := by
+    ext z
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_map,
+      Equiv.coe_toEmbedding]
+    constructor
+    · intro h
+      refine ⟨τ⁻¹ z, ?_, by simp⟩
+      exact (sameCycle_conj_iff τ f x (τ⁻¹ z)).mp (by simpa using h)
+    · rintro ⟨w, hw, rfl⟩
+      exact (sameCycle_conj_iff τ f x w).mpr hw
+  rw [hset, Finset.card_map]
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.orbit_card_conj
 #print axioms PeriodicTM.ClaimA.goodOutput_conj
 #print axioms PeriodicTM.ClaimA.not_winsAt_of_bad_leaf
 #print axioms PeriodicTM.ClaimA.type2_killed_two_distances
