@@ -1103,9 +1103,72 @@ theorem concPlay_sources_nodup {N : ℕ} :
     concPlay_sources_nodup (child (concAnswer c x)) (concStep c x)
       (concStep_sources_nodup c x h)
 
+/-! ### パスは合流しない（辺の終点は常に新規頂点）
+
+新鮮応答の答えは必ず未使用の点なので、終点は互いに異なり、
+既出の点と重ならない。これが「開示部分は互いに素な有向パスの族」
+（research/09 の敵対者不変量 (i)）の Lean 版である。 -/
+
+/-- 辺の終点はすべて開示済み頂点に入っている。 -/
+def TargetsInUsed {N : ℕ} (c : ConcState N) : Prop :=
+  ∀ p ∈ c.edges, p.2 ∈ c.used
+
+/-- 辺の終点に重複がない（＝パスは合流しない）。 -/
+def TargetsNodup {N : ℕ} (c : ConcState N) : Prop :=
+  (c.edges.map Prod.snd).Nodup
+
+theorem concStep_targets_in_used {N : ℕ} (c : ConcState N) (x : Fin N)
+    (h : TargetsInUsed c) : TargetsInUsed (concStep c x) := by
+  unfold TargetsInUsed concStep
+  cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+  | some p => exact h
+  | none =>
+    cases hfresh : freshVertex N c.used with
+    | none => exact h
+    | some v =>
+      intro p hp
+      rcases List.mem_append.mp hp with hp' | hp'
+      · exact List.mem_append.mpr (Or.inl (h p hp'))
+      · rw [List.mem_singleton] at hp'
+        subst hp'
+        exact List.mem_append.mpr (Or.inr (List.mem_singleton_self v))
+
+/-- **合流しないことは1手で保たれる**（新しい終点は未使用だから）。 -/
+theorem concStep_targets_nodup {N : ℕ} (c : ConcState N) (x : Fin N)
+    (h1 : TargetsInUsed c) (h2 : TargetsNodup c) :
+    TargetsNodup (concStep c x) := by
+  unfold TargetsNodup concStep
+  cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+  | some p => exact h2
+  | none =>
+    cases hfresh : freshVertex N c.used with
+    | none => exact h2
+    | some v =>
+      have hv : v ∉ c.edges.map Prod.snd := by
+        intro hmem
+        obtain ⟨p, hp, hpv⟩ := List.mem_map.mp hmem
+        exact freshVertex_not_mem hfresh (hpv ▸ h1 p hp)
+      have hdisj : List.Disjoint (c.edges.map Prod.snd) [v] := by
+        intro a ha hb
+        rw [List.mem_singleton] at hb
+        subst hb
+        exact hv ha
+      simpa using List.Nodup.append h2 (List.nodup_singleton v) hdisj
+
+/-- 対局を通じても保たれる。 -/
+theorem concPlay_targets {N : ℕ} :
+    ∀ {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (c : ConcState N),
+      TargetsInUsed c → TargetsNodup c →
+      TargetsInUsed (concPlay t c) ∧ TargetsNodup (concPlay t c)
+  | _, .leaf _ _, c, h1, h2 => ⟨h1, h2⟩
+  | _, .node x child, c, h1, h2 =>
+    concPlay_targets (child (concAnswer c x)) (concStep c x)
+      (concStep_targets_in_used c x h1) (concStep_targets_nodup c x h1 h2)
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.concPlay_targets
 #print axioms PeriodicTM.ClaimA.concPlay_sources_nodup
 #print axioms PeriodicTM.ClaimA.not_winsAt_of_bad_concLeaf
 #print axioms PeriodicTM.ClaimA.concPlay_edges_subset
