@@ -957,9 +957,76 @@ theorem concAnswer_mem_edges {N : ℕ} (c : ConcState N) (x : Fin N)
     simp only [hv]
     simp
 
+/-- 辺は減らない（単調）。 -/
+theorem concStep_edges_subset {N : ℕ} (c : ConcState N) (x : Fin N) :
+    c.edges ⊆ (concStep c x).edges := by
+  unfold concStep
+  cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+  | some p => exact fun a ha => ha
+  | none =>
+    cases hfresh : freshVertex N c.used with
+    | none => exact fun a ha => ha
+    | some v => exact fun a ha => List.mem_append.mpr (Or.inl ha)
+
+/-- 開示済み頂点は 1 手で高々 1 個増える。 -/
+theorem concStep_used_length_le {N : ℕ} (c : ConcState N) (x : Fin N) :
+    (concStep c x).used.length ≤ c.used.length + 1 := by
+  unfold concStep
+  cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+  | some p => simp
+  | none =>
+    cases hfresh : freshVertex N c.used with
+    | none => simp
+    | some v => simp
+
+/-! ### 具体的な対局（allocation 順） -/
+
+/-- 具体状態での対局（新鮮応答戦略に固定）。 -/
+def concPlay {N : ℕ} :
+    {q : ℕ} → PeriodicTM.QueryGame.Tree N q → ConcState N → ConcState N
+  | _, .leaf _ _, c => c
+  | _, .node x child, c => concPlay (child (concAnswer c x)) (concStep c x)
+
+/-- 具体的な対局が辿り着く葉の出力対。 -/
+def concPlayLeaf {N : ℕ} :
+    {q : ℕ} → PeriodicTM.QueryGame.Tree N q → ConcState N → Fin N × Fin N
+  | _, .leaf v₀ v₁, _ => (v₀, v₁)
+  | _, .node x child, c =>
+      concPlayLeaf (child (concAnswer c x)) (concStep c x)
+
+/-- 対局を通じて辺は減らない。 -/
+theorem concPlay_edges_subset {N : ℕ} :
+    ∀ {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (c : ConcState N),
+      c.edges ⊆ (concPlay t c).edges
+  | _, .leaf _ _, c => fun a ha => ha
+  | _, .node x child, c => by
+    intro a ha
+    exact concPlay_edges_subset (child (concAnswer c x)) (concStep c x)
+      (concStep_edges_subset c x ha)
+
+/-- 対局を通じて `used` は Nodup を保ち、長さは高々 `q` しか増えない。 -/
+theorem concPlay_used_nodup {N : ℕ} :
+    ∀ {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (c : ConcState N),
+      c.used.Nodup → (concPlay t c).used.Nodup
+  | _, .leaf _ _, c, h => h
+  | _, .node x child, c, h =>
+    concPlay_used_nodup (child (concAnswer c x)) (concStep c x)
+      (concStep_used_nodup c x h)
+
+theorem concPlay_used_length_le {N : ℕ} :
+    ∀ {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (c : ConcState N),
+      (concPlay t c).used.length ≤ c.used.length + q
+  | _, .leaf _ _, c => by simp [concPlay]
+  | _, .node x child, c => by
+    have h1 := concPlay_used_length_le (child (concAnswer c x)) (concStep c x)
+    have h2 := concStep_used_length_le c x
+    simp only [concPlay]
+    omega
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.concPlay_edges_subset
 #print axioms PeriodicTM.ClaimA.concAnswer_mem_edges
 #print axioms PeriodicTM.ClaimA.concStep_used_nodup
 #print axioms PeriodicTM.ClaimA.exists_relabeling_fixing
