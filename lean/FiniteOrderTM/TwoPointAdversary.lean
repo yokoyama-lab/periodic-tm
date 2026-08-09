@@ -1165,9 +1165,60 @@ theorem concPlay_targets {N : ℕ} :
     concPlay_targets (child (concAnswer c x)) (concStep c x)
       (concStep_targets_in_used c x h1) (concStep_targets_nodup c x h1 h2)
 
+/-! ### 辺の本数 ＝ 抽象状態の `q`
+
+開示辺の本数は「情報の増えたクエリ」の回数であり、抽象状態の
+`AdvState.q` に対応する。深さ `q` の木では高々 `q` 本しか増えない。 -/
+
+theorem concStep_edges_length_le {N : ℕ} (c : ConcState N) (x : Fin N) :
+    (concStep c x).edges.length ≤ c.edges.length + 1 := by
+  unfold concStep
+  cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+  | some p => simp
+  | none =>
+    cases hfresh : freshVertex N c.used with
+    | none => simp
+    | some v => simp
+
+/-- **辺は深さの分しか増えない**（抽象側の `play_q_le` に対応）。 -/
+theorem concPlay_edges_length_le {N : ℕ} :
+    ∀ {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (c : ConcState N),
+      (concPlay t c).edges.length ≤ c.edges.length + q
+  | _, .leaf _ _, c => by simp [concPlay]
+  | _, .node x child, c => by
+    have h1 := concPlay_edges_length_le (child (concAnswer c x)) (concStep c x)
+    have h2 := concStep_edges_length_le c x
+    simp only [concPlay]
+    omega
+
+/-! ### パスを辿る（抽象状態の `k₀` / `k₁` を読む道具）
+
+`followLen edges fuel x` は `x` から辺を辿れる回数。`fuel` は停止性のため
+（辺の本数を渡せば十分。パス森なので同じ点は2度通らない）。 -/
+
+def followLen {N : ℕ} (edges : List (Fin N × Fin N)) : ℕ → Fin N → ℕ
+  | 0, _ => 0
+  | fuel + 1, x =>
+      match edges.find? (fun p => decide (p.1 = x)) with
+      | some p => followLen edges fuel p.2 + 1
+      | none => 0
+
+theorem followLen_le_fuel {N : ℕ} (edges : List (Fin N × Fin N)) :
+    ∀ (fuel : ℕ) (x : Fin N), followLen edges fuel x ≤ fuel
+  | 0, _ => by simp [followLen]
+  | fuel + 1, x => by
+    unfold followLen
+    cases hfind : edges.find? (fun p => decide (p.1 = x)) with
+    | some p =>
+      have := followLen_le_fuel edges fuel p.2
+      simp only []
+      omega
+    | none => simp
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.concPlay_edges_length_le
 #print axioms PeriodicTM.ClaimA.concPlay_targets
 #print axioms PeriodicTM.ClaimA.concPlay_sources_nodup
 #print axioms PeriodicTM.ClaimA.not_winsAt_of_bad_concLeaf
