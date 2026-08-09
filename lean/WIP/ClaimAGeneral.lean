@@ -737,6 +737,16 @@ theorem strayPathEdges_isAdj {s n : ℕ} {p : ℕ × ℕ}
   -- メタ変数のまま omega に渡り失敗する）
   refine isAdj_range' ?_ ?_ <;> omega
 
+/-- 隣接の左成分はリストの要素。 -/
+theorem IsAdj.mem_left {α : Type*} {l : List α} {a b : α} (h : IsAdj l a b) :
+    a ∈ l := by
+  obtain ⟨i, hi, ha, _⟩ := h
+  exact ha ▸ List.getElem_mem _
+
+/-- `Fin.ofNat N 0 = 0`。 -/
+theorem ofNat_zero_eq_zero {N : ℕ} [NeZero N] : (Fin.ofNat N 0 : Fin N) = 0 := by
+  ext; simp [Fin.ofNat]
+
 /-! ### 軌道の同定（`IsCompletion` の「軌道長 = ℓ」と「別軌道」） -/
 
 /-- **軌道 = 自分のサイクルのリスト**（Finset として）。 -/
@@ -788,6 +798,62 @@ theorem ofNat_disjoint {N : ℕ} [NeZero N] {l₁ l₂ : List ℕ}
     simpa [Fin.ofNat] using this
   rw [Nat.mod_eq_of_lt (h₁ x hx), Nat.mod_eq_of_lt (h₂ y hy)] at hval
   exact hd hx (hval ▸ hy)
+
+/-! ### 接着定理: 構成が別軌道完成であること
+
+構造的な仮定（長さ・Nodup・相互素・値域・辺が隣接）をすべて満たす
+頂点列から作った `buildPerm` は、実際に `IsCompletion` を満たし、
+かつ `0` と `1` が別軌道になる。パッキング側（`two_bin_pack` と
+算術）が供給すべき仮定がこの定理の引数として明示される。 -/
+theorem buildPerm_isCompletion {N ℓ m : ℕ} [NeZero N] (s : AdvState)
+    (b0 b1 : List (List ℕ)) (fill0 fill1 : List ℕ)
+    (hlen0 : (cycle0Verts s b0 fill0).length = ℓ)
+    (hlen1 : (cycle1Verts s b1 fill1).length = m)
+    (hmdvd : m ∣ ℓ)
+    (hnd0 : (cycle0Verts s b0 fill0).Nodup)
+    (hnd1 : (cycle1Verts s b1 fill1).Nodup)
+    (hdisj : List.Disjoint (cycle0Verts s b0 fill0) (cycle1Verts s b1 fill1))
+    (hlt0 : ∀ x ∈ cycle0Verts s b0 fill0, x < N)
+    (hlt1 : ∀ x ∈ cycle1Verts s b1 fill1, x < N)
+    (hedge : ∀ p ∈ s.edges,
+      IsAdj (cycle0Verts s b0 fill0) p.1 p.2 ∨
+      IsAdj (cycle1Verts s b1 fill1) p.1 p.2) :
+    IsCompletion N ℓ s (buildPerm N s b0 b1 fill0 fill1) ∧
+      ¬ (buildPerm N s b0 b1 fill0 fill1).SameCycle 0 1 := by
+  have hL0nd := ofNat_injOn (N := N) hlt0 hnd0
+  have hL1nd := ofNat_injOn (N := N) hlt1 hnd1
+  have hLd := ofNat_disjoint (N := N) hlt0 hlt1 hdisj
+  have h0mem : (0 : Fin N) ∈ (cycle0Verts s b0 fill0).map (Fin.ofNat N) := by
+    have h : (0 : ℕ) ∈ cycle0Verts s b0 fill0 := by
+      unfold cycle0Verts; simp
+    have := List.mem_map_of_mem (f := Fin.ofNat N) h
+    rwa [ofNat_zero_eq_zero] at this
+  have h1mem : (1 : Fin N) ∈ (cycle1Verts s b1 fill1).map (Fin.ofNat N) := by
+    have h : (1 : ℕ) ∈ cycle1Verts s b1 fill1 := by
+      unfold cycle1Verts; simp
+    have := List.mem_map_of_mem (f := Fin.ofNat N) h
+    rwa [ofNat_one_eq_one (by
+      have := hlt1 1 h; omega)] at this
+  have h1not : (1 : Fin N) ∉ (cycle0Verts s b0 fill0).map (Fin.ofNat N) :=
+    fun h => hLd h h1mem
+  -- 目標に現れる `buildPerm` を積の形へ開く（`show (_ * _) _ = _` は
+  -- 適用の被coerce項を推論できないため使わない）
+  unfold buildPerm
+  refine ⟨⟨?_, ?_, ?_⟩, ?_⟩
+  · exact formPerm_mul_pow_eq_one hL0nd hL1nd hLd
+      (by rw [List.length_map, hlen0]) (by rw [List.length_map, hlen1]; exact hmdvd)
+  · -- Finset の DecidablePred インスタンスが目標側と違うので rw ではなく
+    -- simpa で正規化して合わせる
+    simpa [List.length_map, hlen0] using orbit_card hL0nd hLd h0mem
+  · intro p hp
+    rcases hedge p hp with h | h
+    · have hadj := h.map (Fin.ofNat N)
+      rw [mul_apply_of_mem_left hLd hadj.mem_left]
+      exact formPerm_of_adjacent hL0nd hadj
+    · have hadj := h.map (Fin.ofNat N)
+      rw [mul_apply_of_mem_right hLd hadj.mem_left]
+      exact formPerm_of_adjacent hL1nd hadj
+  · exact not_sameCycle_of_notMem hLd h0mem h1not
 
 /-- (⇒) 必要性（系）: 領域内なら完成の存在に依らず式側が成立。 -/
 theorem completion_to_formula {N ℓ : ℕ} [NeZero N] (s : AdvState)
