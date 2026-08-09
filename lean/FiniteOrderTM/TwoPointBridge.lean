@@ -144,6 +144,66 @@ theorem sameCycleValid_of_reflection {ℓ : ℕ} {f : Perm (Fin N)}
   (PeriodicTM.TwoPointCore.sameCycleValid_iff _ _ _).mpr
     (reflection_pos_relation hinv hcc hcard ha hb)
 
+/-! ## 出力対の統合分類（下界の核心）
+
+補題9.4 の4型を1つの型で表し、「隣接する2つの距離が生き残っている
+限り、生き延びる出力は**型3の恒真族だけ**」を示す。その型3は
+別軌道完成（`ClaimA.completion_survives` で生存が保証されている）で
+死ぬので、下界の議論はこの2つで閉じる。 -/
+
+/-- 出力対の4型（research/09 の表）。各成分は `0` または `1` からの
+既知オフセット。`d` は 0→1 の向き付き距離。 -/
+inductive OutputType (ℓ : ℕ) where
+  | type1 (α β : ZMod ℓ) : OutputType ℓ
+  | type2 (α β : ZMod ℓ) : OutputType ℓ
+  | type3 (α β : ZMod ℓ) : OutputType ℓ
+  | type4 (α β : ZMod ℓ) : OutputType ℓ
+deriving DecidableEq
+
+/-- 距離 `d` における出力対の位置座標。 -/
+def OutputType.pair {ℓ : ℕ} : OutputType ℓ → ZMod ℓ → ZMod ℓ × ZMod ℓ
+  | .type1 α β, _ => (α, β)
+  | .type2 α β, d => (α, d + β)
+  | .type3 α β, d => (d + α, β)
+  | .type4 α β, d => (d + α, d + β)
+
+/-- **下界の核心補題**: 距離が `d` と `d+1` の2通り残っているとき、
+両方で有効な出力対は型3の `β = α`（恒真族）に限る。
+型1・型4は距離そのものを、型2は `2d` を確定させてしまうため死ぬ
+（`two_mul_succ_ne` により偶奇に依らない）。 -/
+theorem survives_two_distances {ℓ : ℕ} (hℓ : 3 ≤ ℓ) (t : OutputType ℓ)
+    (d : ZMod ℓ)
+    (h1 : PeriodicTM.TwoPointCore.SameCycleValid d (t.pair d).1 (t.pair d).2)
+    (h2 : PeriodicTM.TwoPointCore.SameCycleValid (d + 1) (t.pair (d + 1)).1
+      (t.pair (d + 1)).2) :
+    ∃ α : ZMod ℓ, t = OutputType.type3 α α := by
+  haveI : Fact (1 < ℓ) := ⟨by omega⟩
+  have hone : (1 : ZMod ℓ) ≠ 0 := one_ne_zero
+  match t with
+  | .type1 α β =>
+    exfalso
+    have := PeriodicTM.TwoPointCore.type1_two_distances d (d + 1) α β h1 h2
+    exact hone (by linear_combination -this)
+  | .type2 α β =>
+    exfalso
+    exact PeriodicTM.TwoPointCore.two_mul_succ_ne hℓ d
+      (PeriodicTM.TwoPointCore.type2_two_distances d (d + 1) α β h1 h2)
+  | .type3 α β =>
+    exact ⟨α, by
+      rw [PeriodicTM.TwoPointCore.type3_forces_eq d α β h1]⟩
+  | .type4 α β =>
+    exfalso
+    have := PeriodicTM.TwoPointCore.type4_two_distances d (d + 1) α β h1 h2
+    exact hone (by linear_combination -this)
+
+/-- 型3の恒真族は、確かに**すべての**距離で有効
+（`TwoPointCore.type3_universal` の言い換え）。だからこそ距離を
+絞る戦略では殺せず、別軌道完成の生存が要る。 -/
+theorem type3_valid_everywhere {ℓ : ℕ} (α d : ZMod ℓ) :
+    PeriodicTM.TwoPointCore.SameCycleValid d
+      ((OutputType.type3 α α).pair d).1 ((OutputType.type3 α α).pair d).2 :=
+  PeriodicTM.TwoPointCore.type3_universal d α
+
 end PeriodicTM.TwoPointBridge
 
 #print axioms PeriodicTM.TwoPointBridge.pow_apply_eq_iff

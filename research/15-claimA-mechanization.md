@@ -114,3 +114,32 @@ Lean 化の現状は `research/STATUS.md` と `lean/WIP/ClaimAGeneral.lean`。
    formPerm の一般補題で f^ℓ=1・軌道長・辺拡張・別軌道を出す）
 3. 主張A一般形を組み立て、`FiniteOrderTM/TwoPointClaimA.lean` 本体へ移動
 4. その後、定理9.6 の下界の不変量帰納（Tree induction・roadmap step 5）へ
+
+## 定理9.6 の残り（2026-08-09 時点の設計）
+
+主張Aが層1になったことで、下界の議論は次の2本柱に整理された。両方とも
+Lean 済みで、残るのは **Tree 上の帰納（roadmap 5）だけ**である。
+
+| 柱 | 内容 | 実体 |
+|---|---|---|
+| (a) 距離が2つ残る限り、生き残る出力は型3の恒真族のみ | `survives_two_distances`（型1・4は距離を、型2は 2d を確定させて死ぬ） | `TwoPointBridge.lean` |
+| (b) その型3は別軌道完成で死ぬ | `completion_survives`（領域内では別軌道完成が必ず生存） | `TwoPointClaimAGeneral.lean` |
+
+橋渡し（`pow_apply_eq_iff`・`reflection_pos_relation`・
+`sameCycleValid_of_reflection`）により、(a) の抽象命題は
+`QueryGame` の具体的な出力対に適用できる形になっている。
+
+### 残る作業: Tree 帰納の状態モデル
+
+必要なのは「深さ `q` の任意の決定木に対し、新鮮応答敵対者の状態が
+(i) 生存距離集合 `|D| ≥ 2`、(ii) 別軌道完成の生存、を保つ」こと。
+Lean 化の設計判断は次の1点に集約される:
+
+> **葉の出力対を4型のどれかに分類する規則を、状態の側に持たせる。**
+
+すなわち `AdvState` に「各開示頂点が `0` からのオフセットか `1` からの
+オフセットか」を持たせ、葉の出力 `(v₀, v₁)` を `OutputType` へ写す関数を
+定義する。未開示点を含む出力は「軌道外配置で死ぬ」ケースとして別扱い
+（これは主張Aの余剰点勘定から出るので、既存の道具で書けるはず）。
+
+この状態モデルさえ書ければ、帰納の各段は (a)(b) の適用に落ちる。
