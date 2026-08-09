@@ -323,9 +323,48 @@ theorem type3_output_killed {N ℓ : ℕ} [NeZero N] (s : AdvState)
       (Fin.ofNat N (2 + s.k0 + a)) v₁ :=
   not_good_of_sameCycle_one f hdiff (sameCycle_one_onP1 s f hcomp hN a ha)
 
+/-! ### 同一軌道完成の頂点列（距離 `d`）
+
+`0` と `1` を**同じ**長さ `ℓ` のサイクルに、向き付き距離 `d` で置く。
+並びは 位置0 に `0`、`1..k₀` に P₀、`k₀+1..d−1` を未開示点で埋め（`gap`）、
+位置 `d` に `1`、`d+1..d+k₁` に P₁、残りを `rest` と迷いブロックで埋める。
+`gap.length = d − 1 − k₀` が距離 `d` を実現する（`k₀ < d` が必要）。 -/
+def sameCycleVerts (s : AdvState) (gap rest : List ℕ) (b : List (List ℕ)) :
+    List ℕ :=
+  (0 :: List.range' 2 s.k0) ++ gap ++ (1 :: List.range' (2 + s.k0) s.k1) ++
+    rest ++ b.flatten
+
+/-- 同一軌道頂点列の長さ。 -/
+theorem sameCycleVerts_length (s : AdvState) (gap rest : List ℕ)
+    (b : List (List ℕ)) :
+    (sameCycleVerts s gap rest b).length
+      = 1 + s.k0 + gap.length + 1 + s.k1 + rest.length
+        + (b.map List.length).sum := by
+  unfold sameCycleVerts
+  simp [List.length_append, List.length_range', List.length_flatten]
+  omega
+
+/-- **開示辺はすべて同一軌道頂点列の隣接**（`edges_isAdj` の同一軌道版）。
+P₀ は先頭、P₁ は `gap` の直後、迷いパスは末尾のブロック内に並ぶ。 -/
+theorem edges_isAdj_sameCycle (s : AdvState) (gap rest : List ℕ)
+    (b : List (List ℕ)) (hcover : ∀ c ∈ s.blocks, c ∈ b) :
+    ∀ p ∈ s.edges, IsAdj (sameCycleVerts s gap rest b) p.1 p.2 := by
+  intro p hp
+  unfold AdvState.edges at hp
+  unfold sameCycleVerts
+  rcases List.mem_append.mp hp with h | h
+  · rcases List.mem_append.mp h with h | h
+    · -- P₀: 先頭ブロックの隣接を4回持ち上げる
+      exact (pathEdges_isAdj h).append_right.append_right.append_right.append_right
+    · -- P₁: `gap` の直後にあるので append_left を1回挟む
+      exact (pathEdges_isAdj h).append_left.append_right.append_right
+  · obtain ⟨c, hc, hadj⟩ := strayEdges_mem_block s.strays (2 + s.k0 + s.k1) p h
+    exact (hadj.flatten (hcover c hc)).append_left
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.edges_isAdj_sameCycle
 #print axioms PeriodicTM.ClaimA.type3_output_killed
 #print axioms PeriodicTM.ClaimA.completion_onP1_pos
 #print axioms PeriodicTM.ClaimA.completion_pow_zero
