@@ -99,3 +99,28 @@ P₁ と迷い頂点の番号がすべて 1 ずつずれる**。
 
 残るのは手順2（allocation 順の具体戦略 `freshStrategy` の定義と、
 その標識付けが単射であることの証明）のみ。
+
+## 手順3も完了（2026-08-10、ループ #48〜51）
+
+`runs_iff_good_concPlayLeaf` により、**`f` が対局終了時の辺をすべて
+尊重すれば、木を `f` に対して走らせた葉は対局が辿った葉と一致する**。
+すなわち `Agrees` に相当する条件が、`ConcState` 側では
+「最終状態の辺を尊重する」という**1つの条件に集約された**
+（各手の答えが辺として記録されるため）。
+
+| 補題 | 内容 |
+|---|---|
+| `ConcState` / `concAnswer` / `concStep` | allocation 順の具体状態と新鮮応答 |
+| `concStep_used_nodup` / `freshVertex_isSome` | 標識の単射性と新鮮点の存在 |
+| `concAnswer_mem_edges` | 答えは必ず辺として記録される |
+| `concPlay` / `concPlayLeaf` / 単調性3本 | 具体的な対局とその不変量 |
+| **`runs_iff_good_concPlayLeaf`** | **最終状態の完成 → 各手の一致 → 同じ葉** |
+| `not_winsAt_of_bad_concLeaf` | 葉の出力が悪ければ木は勝てない |
+
+### 残り
+
+1. 具体状態 `ConcState` から抽象状態 `AdvState`（形）への対応づけ
+   （k₀・k₁・strays を数える関数と、その正しさ）
+2. 主張Aで得た3つの完成（別軌道・距離 d・距離 d+1）を、
+   `exists_relabeling_fixing` の `τ` で対局の標識へ移す
+3. 葉の出力を `classify` で4型に振り分け、既証明の撃墜を適用
