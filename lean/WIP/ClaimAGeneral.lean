@@ -524,6 +524,67 @@ def buildPerm (N : ℕ) [NeZero N] (s : AdvState)
   ((cycle0Verts s b0 fill0).map (Fin.ofNat N)).formPerm *
     ((cycle1Verts s b1 fill1).map (Fin.ofNat N)).formPerm
 
+/-! ### formPerm の代数的性質（位数条件 `f ^ ℓ = 1` 用）
+
+サイクル長がそれぞれ `ℓ` と `m ∣ ℓ` なので、互いに素な 2 つの
+`formPerm` の積は `ℓ` 乗で単位元になる。ここは一般の `α` で示す。 -/
+
+section FormPerm
+
+variable {α : Type*} [DecidableEq α]
+
+/-- リスト長が `n` を割るなら `formPerm l ^ n = 1`（`l` は Nodup）。
+1 のサイクル（長さ `m ∣ ℓ`）を `ℓ` 乗で消すのに使う。 -/
+theorem formPerm_pow_eq_one_of_dvd {l : List α} (hl : l.Nodup) {n : ℕ}
+    (hd : l.length ∣ n) : l.formPerm ^ n = 1 := by
+  obtain ⟨k, rfl⟩ := hd
+  -- 注: mathlib 側の `l` は明示引数（Perm/List.lean の `variable (l)`）
+  rw [pow_mul, List.formPerm_pow_length_eq_one_of_nodup _ hl, one_pow]
+
+/-- 頂点を共有しないリストの `formPerm` は（置換として）互いに素。
+台の外は動かさないことから直接出る。 -/
+theorem formPerm_disjoint {l₁ l₂ : List α} (h : List.Disjoint l₁ l₂) :
+    Perm.Disjoint l₁.formPerm l₂.formPerm := by
+  intro x
+  by_cases hx : x ∈ l₁
+  · exact Or.inr (List.formPerm_apply_of_notMem (h hx))
+  · exact Or.inl (List.formPerm_apply_of_notMem hx)
+
+/-- **位数条件の一般形**: 互いに素な 2 つの Nodup リストの `formPerm` の
+積は、両方の長さが `n` を割るとき `n` 乗で単位元。 -/
+theorem formPerm_mul_pow_eq_one {l₁ l₂ : List α} (h₁ : l₁.Nodup) (h₂ : l₂.Nodup)
+    (hd : List.Disjoint l₁ l₂) {n : ℕ}
+    (hn₁ : l₁.length ∣ n) (hn₂ : l₂.length ∣ n) :
+    (l₁.formPerm * l₂.formPerm) ^ n = 1 := by
+  rw [(formPerm_disjoint hd).commute.mul_pow,
+    formPerm_pow_eq_one_of_dvd h₁ hn₁, formPerm_pow_eq_one_of_dvd h₂ hn₂, one_mul]
+
+end FormPerm
+
+/-- `Fin.ofNat N` は `[0, N)` 上で単射（構成リストの Nodup を
+`Fin N` へ移すのに使う）。 -/
+theorem ofNat_injOn {N : ℕ} [NeZero N] {l : List ℕ} (hl : ∀ x ∈ l, x < N)
+    (hnd : l.Nodup) : (l.map (Fin.ofNat N)).Nodup := by
+  refine List.Nodup.map_on ?_ hnd
+  intro x hx y hy hxy
+  have hval : x % N = y % N := by
+    have := congrArg Fin.val hxy
+    simpa [Fin.ofNat] using this
+  rwa [Nat.mod_eq_of_lt (hl x hx), Nat.mod_eq_of_lt (hl y hy)] at hval
+
+/-- `List.Disjoint` は `Fin.ofNat` の像でも保たれる（`[0, N)` 上）。 -/
+theorem ofNat_disjoint {N : ℕ} [NeZero N] {l₁ l₂ : List ℕ}
+    (h₁ : ∀ x ∈ l₁, x < N) (h₂ : ∀ x ∈ l₂, x < N) (hd : List.Disjoint l₁ l₂) :
+    List.Disjoint (l₁.map (Fin.ofNat N)) (l₂.map (Fin.ofNat N)) := by
+  intro z hz hz'
+  obtain ⟨x, hx, rfl⟩ := List.mem_map.mp hz
+  obtain ⟨y, hy, hxy⟩ := List.mem_map.mp hz'
+  have hval : y % N = x % N := by
+    have := congrArg Fin.val hxy
+    simpa [Fin.ofNat] using this
+  rw [Nat.mod_eq_of_lt (h₁ x hx), Nat.mod_eq_of_lt (h₂ y hy)] at hval
+  exact hd hx (hval ▸ hy)
+
 /-- (⇒) 必要性（系）: 領域内なら完成の存在に依らず式側が成立。 -/
 theorem completion_to_formula {N ℓ : ℕ} [NeZero N] (s : AdvState)
     (hfit : s.Fits N) (hreg : InLowerRegion N ℓ s) (hℓ : 3 ≤ ℓ)
