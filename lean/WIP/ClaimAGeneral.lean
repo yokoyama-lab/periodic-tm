@@ -844,6 +844,65 @@ theorem cycle1Verts_length (s : AdvState) (b1 : List (List ℕ))
   simp [List.length_append, List.length_range', List.length_flatten]
   omega
 
+/-! ### 容量不等式（`two_bin_pack` の前提を領域条件から出す） -/
+
+/-- 各要素が 2 以上なら、総和は長さの 2 倍以上。 -/
+theorem two_mul_length_le_sum {l : List ℕ} (h : ∀ x ∈ l, 2 ≤ x) :
+    2 * l.length ≤ l.sum := by
+  induction l with
+  | nil => simp
+  | cons a t ih =>
+    have ha := h a (List.mem_cons.mpr (Or.inl rfl))
+    have ht := ih fun x hx => h x (List.mem_cons.mpr (Or.inr hx))
+    simp only [List.length_cons, List.sum_cons]
+    omega
+
+/-- 各要素が 2 以上のとき、**最大値は「総和 − 2(個数 − 1)」以下**。
+他の要素が最低 2 ずつ場所を取るため。貪欲の十分条件の核。 -/
+theorem max_add_two_mul_length_le {l : List ℕ} (h : ∀ x ∈ l, 2 ≤ x) :
+    l.foldr max 0 + 2 * l.length ≤ l.sum + 2 := by
+  induction l with
+  | nil => simp
+  | cons a t ih =>
+    have ha := h a (List.mem_cons.mpr (Or.inl rfl))
+    have ht : ∀ x ∈ t, 2 ≤ x := fun x hx => h x (List.mem_cons.mpr (Or.inr hx))
+    have hih := ih ht
+    have hts := two_mul_length_le_sum ht
+    simp only [List.foldr_cons, List.length_cons, List.sum_cons]
+    rcases max_choice a (t.foldr max 0) with hmax | hmax <;> rw [hmax] <;> omega
+
+/-- ブロックの頂点数はどれも 2 以上（迷いパスは 1 辺以上だから）。 -/
+theorem blocks_length_ge_two (s : AdvState) (hstray : ∀ j ∈ s.strays, 1 ≤ j) :
+    ∀ x ∈ s.blocks.map List.length, 2 ≤ x := by
+  intro x hx
+  unfold AdvState.blocks at hx
+  rw [strayBlocks_length_map] at hx
+  obtain ⟨j, hj, rfl⟩ := List.mem_map.mp hx
+  have := hstray j hj
+  omega
+
+/-- ブロックの本数は迷いパスの本数。 -/
+theorem blocks_length (s : AdvState) : s.blocks.length = s.strays.length := by
+  have h := congrArg List.length
+    (strayBlocks_length_map (2 + s.k0 + s.k1) s.strays)
+  simpa [AdvState.blocks] using h
+
+/-- **容量不等式**: 領域条件（`q + 3 ≤ ℓ` と `q + 1 ≤ m`）から
+`two_bin_pack` の前提（総和 + 最大 ≤ 容量和）が出る。
+研究ノート 15 の「発見2」の算術部分。 -/
+theorem capacity_ineq {ℓ m : ℕ} (s : AdvState) (hstray : ∀ j ∈ s.strays, 1 ≤ j)
+    (hq : s.q + 3 ≤ ℓ) (hm : s.q + 1 ≤ m) :
+    (s.blocks.map List.length).sum + (s.blocks.map List.length).foldr max 0
+      ≤ (ℓ - 1 - s.k0) + (m - 1 - s.k1) := by
+  have hge := blocks_length_ge_two s hstray
+  have hsum := blocks_length_sum s
+  have hlen : (s.blocks.map List.length).length = s.strays.length := by
+    rw [List.length_map, blocks_length]
+  have hmax := max_add_two_mul_length_le hge
+  rw [hlen] at hmax
+  unfold AdvState.q at hq hm
+  omega
+
 /-- 迷いパスの辺は、必ず**どれか1つのブロックの中**の隣接。 -/
 theorem strayEdges_mem_block :
     ∀ (l : List ℕ) (next : ℕ), ∀ p ∈ strayEdges next l,
