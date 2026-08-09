@@ -110,6 +110,40 @@ theorem pow_apply_eq_self_iff {ℓ : ℕ} (f : Perm (Fin N)) (x : Fin N)
   have h := pow_apply_eq_iff (ℓ := ℓ) f x hcard (i := i) (j := 0)
   simpa using h
 
+/-! ## 型分類の移送（roadmap ステップ2）
+
+具体側の反射 `ι` が出す対 `(ι x, ι (f^d x))` は、位置座標では
+必ず `b = a − d` を満たす。これは `TwoPointCore.sameCycleValid_iff`
+の左辺そのものなので、補題9.4 の型分類（type1〜4）がそのまま
+具体側の出力対に適用できるようになる。 -/
+
+/-- **反射の出力対が満たす座標関係**: `ι x = f^a x`、
+`ι (f^d x) = f^b x` なら `b = a − d`（`ZMod ℓ`）。 -/
+theorem reflection_pos_relation {ℓ : ℕ} {f : Perm (Fin N)} {ι : Fin N → Fin N}
+    (hinv : ∀ y, ι (ι y) = y) (hcc : ∀ y, f (ι (f (ι y))) = y)
+    {x : Fin N} (hcard : #{y | f.SameCycle x y} = ℓ) {a b d : ℕ}
+    (ha : ι x = (f ^ a) x) (hb : ι ((f ^ d) x) = (f ^ b) x) :
+    (b : ZMod ℓ) = (a : ZMod ℓ) - (d : ZMod ℓ) := by
+  have hkey := reflection_apply_pow hinv hcc x d
+  rw [hb, ha, ← Perm.mul_apply, ← pow_add] at hkey
+  have hz := (pow_apply_eq_iff f x hcard).mp hkey
+  push_cast at hz
+  linear_combination hz
+
+/-- **移送の結論**: 具体側の反射が出す対は、抽象側の
+`SameCycleValid`（補題9.4 の有効性条件）を満たす。これにより
+`TwoPointCore` の型分類補題（`type1_two_distances` 等）が
+`QueryGame` の出力対に対して使えるようになる。 -/
+theorem sameCycleValid_of_reflection {ℓ : ℕ} {f : Perm (Fin N)}
+    {ι : Fin N → Fin N} (hinv : ∀ y, ι (ι y) = y)
+    (hcc : ∀ y, f (ι (f (ι y))) = y) {x : Fin N}
+    (hcard : #{y | f.SameCycle x y} = ℓ) {a b d : ℕ}
+    (ha : ι x = (f ^ a) x) (hb : ι ((f ^ d) x) = (f ^ b) x) :
+    PeriodicTM.TwoPointCore.SameCycleValid (d : ZMod ℓ) (a : ZMod ℓ)
+      (b : ZMod ℓ) :=
+  (PeriodicTM.TwoPointCore.sameCycleValid_iff _ _ _).mpr
+    (reflection_pos_relation hinv hcc hcard ha hb)
+
 end PeriodicTM.TwoPointBridge
 
 #print axioms PeriodicTM.TwoPointBridge.pow_apply_eq_iff
