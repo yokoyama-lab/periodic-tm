@@ -58,3 +58,93 @@ P₁ と迷い頂点の番号がすべて 1 ずつずれる**。
 
 **この節の内容は否定的結果だが、素朴な道が塞がっていることの確認**であり、
 次のセッションが同じ壁に時間を使わないための記録である。
+
+## 進捗（2026-08-10、ループ #43〜45）
+
+手順1（付け替えの輸送）は**完了**。`TwoPointAdversary.lean` に:
+
+| 補題 | 内容 |
+|---|---|
+| `isReflection_conj` / `goodOutput_conj` | 反射と良い出力は共役で移る |
+| `conj_pow` / `conj_pow_eq_one` | 位数条件の輸送 |
+| `sameCycle_conj_iff` / `orbit_card_conj` | 同一軌道関係と軌道の大きさの共役不変性 |
+| `isCompletion_conj` | **τ が 0 を固定すれば τfτ⁻¹ は付け替え先の完成** |
+| `not_sameCycle_conj` | 別軌道性の保存（τ が 0 と 1 を固定するとき） |
+
+残りは手順2・3（allocation 順の具体戦略 `freshStrategy` の定義と、
+その標識からグループ順への付け替え `τ` の構成）。
+
+### 実装メモ（次のセッションへ）
+
+- `τ` は「対局で開示された順の番号」→「グループ順の番号」の置換。
+  0 と 1 は両方で固定されるので、`isCompletion_conj` の仮定は満たせる。
+- `τ` の構成は `List.formPerm` ではなく、両方の頂点列（同じ多重集合）
+  の間の対応として作るのが素直。`Equiv.Perm` を有限リストの並べ替えから
+  作る mathlib の道具（`List.Perm` → `Equiv.Perm`）を先に探すこと。
+- 補題名は推測せず `exact?` で引く（このセッションで2度詰まった）。
+
+## 手順3の鍵が見つかった（2026-08-10、ループ #47）
+
+付け替え `τ` の構成は **mathlib の `Equiv.Perm.exists_extending_pair`**
+がそのまま使える:
+
+> 有限型 `α` から `β` への2つの単射 `f, g` に対し、
+> `∀ a, σ (f a) = g a` を満たす `σ : Perm β` が存在する。
+
+2通りの標識付け（対局の allocation 順・埋め込みのグループ順）は
+どちらも「スロット → `Fin N`」の単射なので、これで `τ` が取れる。
+さらに**指定点を共有していれば `τ` は `0` と `1` を自動的に固定する**
+（`exists_relabeling_fixing`。`isCompletion_conj` /
+`not_sameCycle_conj` の仮定がそのまま満たされる）。
+
+残るのは手順2（allocation 順の具体戦略 `freshStrategy` の定義と、
+その標識付けが単射であることの証明）のみ。
+
+## 手順3も完了（2026-08-10、ループ #48〜51）
+
+`runs_iff_good_concPlayLeaf` により、**`f` が対局終了時の辺をすべて
+尊重すれば、木を `f` に対して走らせた葉は対局が辿った葉と一致する**。
+すなわち `Agrees` に相当する条件が、`ConcState` 側では
+「最終状態の辺を尊重する」という**1つの条件に集約された**
+（各手の答えが辺として記録されるため）。
+
+| 補題 | 内容 |
+|---|---|
+| `ConcState` / `concAnswer` / `concStep` | allocation 順の具体状態と新鮮応答 |
+| `concStep_used_nodup` / `freshVertex_isSome` | 標識の単射性と新鮮点の存在 |
+| `concAnswer_mem_edges` | 答えは必ず辺として記録される |
+| `concPlay` / `concPlayLeaf` / 単調性3本 | 具体的な対局とその不変量 |
+| **`runs_iff_good_concPlayLeaf`** | **最終状態の完成 → 各手の一致 → 同じ葉** |
+| `not_winsAt_of_bad_concLeaf` | 葉の出力が悪ければ木は勝てない |
+
+## パス森の構造が揃った（2026-08-10、ループ #66〜69）
+
+`groupedList`（`0` の道 ++ `1` の道 ++ 迷いパスの道）が **`used` の
+並べ替えである**ことを言うのに要る2つの性質が両方揃った。
+
+| 向き | 補題 | 内容 |
+|---|---|---|
+| 単射性 | `groupedList_nodup` | 3部分が Nodup かつ互いに素（`pathFrom_disjoint`） |
+| 被覆 | **`exists_root_mem_pathFrom`** | 開示点はどれかの根の道の上にある |
+
+被覆の道具立て:
+
+| 補題 | 内容 |
+|---|---|
+| `mem_roots_of_pred_none` | 前任者のいない開示点は根 |
+| `pred_lt` | 前任者は開示点で `used` 内の位置が真に小さい |
+| `exists_root_predIter` | **遡行の停止性**（位置による帰納。遡る回数は `idxOf` 以下） |
+| `pred_mem_edges` / `followList_head_of_edge` | 辺 `(w,v)` は `w` の道の1歩目が `v` |
+| `predIter_mem_followList` | **遡行の逆**（遡れた先の道に元の点が乗る） |
+| `followList_mono` | 燃料の単調性（`fuel := used.length` で統一できる） |
+
+残るのは「`groupedList` が `used` の並べ替え」の明示（Nodup＋被覆＋
+長さ、あるいは `List.Perm` の直接構成）と、そこからの `τ` の抽出。
+
+### 残り
+
+1. 具体状態 `ConcState` から抽象状態 `AdvState`（形）への対応づけ
+   （k₀・k₁・strays を数える関数と、その正しさ）
+2. 主張Aで得た3つの完成（別軌道・距離 d・距離 d+1）を、
+   `exists_relabeling_fixing` の `τ` で対局の標識へ移す
+3. 葉の出力を `classify` で4型に振り分け、既証明の撃墜を適用
