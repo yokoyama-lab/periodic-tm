@@ -1420,9 +1420,98 @@ theorem followList_nodup {N : ℕ} (c : ConcState N) (h : EdgesIncreasing c) :
       have := followList_idxOf_gt c h fuel p.2 p.2 hmem
       omega
 
+/-! ### 森の根（`0`・`1`・迷いパスの根）
+
+入ってくる辺を持たない開示点が根。指定点 `0`・`1` は初期から開示済みで、
+新しい終点は常に未使用の点だから、**`0`・`1` は決して終点にならない**。
+したがって根は `0`・`1` と迷いパスの根に分かれる。 -/
+
+/-- 開示済み頂点は減らない。 -/
+theorem concStep_used_subset {N : ℕ} (c : ConcState N) (x : Fin N) :
+    c.used ⊆ (concStep c x).used := by
+  unfold concStep
+  cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+  | some p => exact fun a ha => ha
+  | none =>
+    cases hfresh : freshVertex N (withQueried c.used x) with
+    | none => exact fun a ha => ha
+    | some v =>
+      exact fun a ha =>
+        List.mem_append.mpr (Or.inl (subset_withQueried c.used x ha))
+
+/-- 指定点は開示済み。 -/
+def DesignatedUsed {N : ℕ} [NeZero N] (c : ConcState N) : Prop :=
+  (0 : Fin N) ∈ c.used ∧ (1 : Fin N) ∈ c.used
+
+/-- 指定点は辺の終点にならない。 -/
+def NoTargetDesignated {N : ℕ} [NeZero N] (c : ConcState N) : Prop :=
+  ∀ p ∈ c.edges, p.2 ≠ (0 : Fin N) ∧ p.2 ≠ (1 : Fin N)
+
+theorem concStep_designated_used {N : ℕ} [NeZero N] (c : ConcState N)
+    (x : Fin N) (h : DesignatedUsed c) : DesignatedUsed (concStep c x) :=
+  ⟨concStep_used_subset c x h.1, concStep_used_subset c x h.2⟩
+
+/-- **指定点は終点にならない（1手で保たれる）**: 新しい終点は未使用点で、
+`0`・`1` は既に開示済みだから。 -/
+theorem concStep_no_target_designated {N : ℕ} [NeZero N] (c : ConcState N)
+    (x : Fin N) (hd : DesignatedUsed c) (h : NoTargetDesignated c) :
+    NoTargetDesignated (concStep c x) := by
+  unfold NoTargetDesignated concStep
+  cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+  | some p => exact h
+  | none =>
+    cases hfresh : freshVertex N (withQueried c.used x) with
+    | none => exact h
+    | some v =>
+      have hv := freshVertex_not_mem hfresh
+      intro p hp
+      rcases List.mem_append.mp hp with hp' | hp'
+      · exact h p hp'
+      · rw [List.mem_singleton] at hp'
+        subst hp'
+        refine ⟨fun hc => ?_, fun hc => ?_⟩
+        · simp only [] at hc
+          subst hc
+          exact hv (subset_withQueried c.used x hd.1)
+        · simp only [] at hc
+          subst hc
+          exact hv (subset_withQueried c.used x hd.2)
+
+/-- 森の根: 入ってくる辺を持たない開示点。 -/
+def roots {N : ℕ} (c : ConcState N) : List (Fin N) :=
+  c.used.filter (fun v => decide (v ∉ c.edges.map Prod.snd))
+
+/-- 迷いパスの根（指定点を除いた根）。 -/
+def strayRoots {N : ℕ} [NeZero N] (c : ConcState N) : List (Fin N) :=
+  (roots c).filter (fun v => decide (v ≠ (0 : Fin N) ∧ v ≠ (1 : Fin N)))
+
+theorem roots_nodup {N : ℕ} (c : ConcState N) (h : c.used.Nodup) :
+    (roots c).Nodup := List.Nodup.filter _ h
+
+theorem strayRoots_nodup {N : ℕ} [NeZero N] (c : ConcState N)
+    (h : c.used.Nodup) : (strayRoots c).Nodup :=
+  List.Nodup.filter _ (roots_nodup c h)
+
+/-- **指定点は根**（開示済みかつ終点にならないから）。 -/
+theorem designated_mem_roots {N : ℕ} [NeZero N] (c : ConcState N)
+    (hd : DesignatedUsed c) (hn : NoTargetDesignated c) :
+    (0 : Fin N) ∈ roots c ∧ (1 : Fin N) ∈ roots c := by
+  constructor <;> (
+    unfold roots
+    rw [List.mem_filter]
+    refine ⟨by first | exact hd.1 | exact hd.2, ?_⟩
+    simp only [decide_eq_true_eq]
+    intro hmem
+    obtain ⟨p, hp, hpv⟩ := List.mem_map.mp hmem
+    have := hn p hp
+    first
+      | exact this.1 hpv
+      | exact this.2 hpv)
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.designated_mem_roots
 #print axioms PeriodicTM.ClaimA.followList_nodup
 #print axioms PeriodicTM.ClaimA.concPlay_wellFormed
 #print axioms PeriodicTM.ClaimA.initState_wellFormed
