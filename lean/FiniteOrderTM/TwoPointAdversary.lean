@@ -1546,9 +1546,42 @@ theorem designated_not_mem_followList {N : ℕ} [NeZero N] (c : ConcState N)
   ⟨root_not_mem_followList c (designated_mem_roots c hd hn).1 fuel x,
     root_not_mem_followList c (designated_mem_roots c hd hn).2 fuel x⟩
 
+/-- **始点が違えば終点も違う**（入次数 ≤ 1 の言い換え）。
+異なる点から出る辺は異なる点へ向かうので、パスの1歩目で既に分かれる。 -/
+theorem edges_target_ne {N : ℕ} (c : ConcState N) (ht : TargetsNodup c)
+    {p q : Fin N × Fin N} (hp : p ∈ c.edges) (hq : q ∈ c.edges)
+    (hne : p.1 ≠ q.1) : p.2 ≠ q.2 := by
+  intro hc
+  exact hne (congrArg Prod.fst (List.inj_on_of_nodup_map ht hp hq hc))
+
+/-- 1歩目は分かれる: `x ≠ y` なら、それぞれの道の先頭は異なる。
+（`followList` の先頭は `x` から出る辺の終点。） -/
+theorem followList_head_ne {N : ℕ} (c : ConcState N) (ht : TargetsNodup c)
+    {x y : Fin N} (hne : x ≠ y) (fuel : ℕ)
+    {a b : Fin N}
+    (ha : (followList c.edges (fuel + 1) x).head? = some a)
+    (hb : (followList c.edges (fuel + 1) y).head? = some b) : a ≠ b := by
+  rw [followList] at ha hb
+  cases hfx : c.edges.find? (fun p => decide (p.1 = x)) with
+  | none => rw [hfx] at ha; simp at ha
+  | some p =>
+    cases hfy : c.edges.find? (fun q => decide (q.1 = y)) with
+    | none => rw [hfy] at hb; simp at hb
+    | some q =>
+      rw [hfx] at ha
+      rw [hfy] at hb
+      simp only [List.head?_cons, Option.some.injEq] at ha hb
+      subst ha
+      subst hb
+      have hpx : p.1 = x := by have := List.find?_some hfx; simpa using this
+      have hqy : q.1 = y := by have := List.find?_some hfy; simpa using this
+      exact edges_target_ne c ht (List.mem_of_find?_eq_some hfx)
+        (List.mem_of_find?_eq_some hfy) (by rw [hpx, hqy]; exact hne)
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.followList_head_ne
 #print axioms PeriodicTM.ClaimA.root_not_mem_followList
 #print axioms PeriodicTM.ClaimA.designated_mem_roots
 #print axioms PeriodicTM.ClaimA.followList_nodup
