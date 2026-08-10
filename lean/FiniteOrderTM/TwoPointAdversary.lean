@@ -1578,9 +1578,71 @@ theorem followList_head_ne {N : ℕ} (c : ConcState N) (ht : TargetsNodup c)
       exact edges_target_ne c ht (List.mem_of_find?_eq_some hfx)
         (List.mem_of_find?_eq_some hfy) (by rw [hpx, hqy]; exact hne)
 
+/-! ### 前任者 `pred`（終点から始点を引く）
+
+入次数 ≤ 1 なので、終点から始点は一意に決まる。合流不能を
+**後ろ向きに**示すための道具（`research/17` の設計メモ参照）。 -/
+
+/-- `z` に入る辺の始点（あれば）。 -/
+def pred {N : ℕ} (c : ConcState N) (z : Fin N) : Option (Fin N) :=
+  (c.edges.find? (fun p => decide (p.2 = z))).map Prod.fst
+
+/-- **前任者は一意**: 辺 `(a, z)` があれば `pred z = some a`。 -/
+theorem pred_eq {N : ℕ} (c : ConcState N) (ht : TargetsNodup c)
+    {a z : Fin N} (h : (a, z) ∈ c.edges) : pred c z = some a := by
+  unfold pred
+  cases hfind : c.edges.find? (fun p => decide (p.2 = z)) with
+  | none =>
+    exfalso
+    have := List.find?_eq_none.mp hfind (a, z) h
+    simp at this
+  | some q =>
+    have hq := List.mem_of_find?_eq_some hfind
+    have hqz : q.2 = z := by
+      have := List.find?_some hfind; simpa using this
+    have hqa : q = (a, z) :=
+      List.inj_on_of_nodup_map ht hq h (by simp [hqz])
+    simp [hqa]
+
+/-- 根には前任者がいない。 -/
+theorem pred_eq_none_of_root {N : ℕ} (c : ConcState N) {r : Fin N}
+    (hr : r ∈ roots c) : pred c r = none := by
+  unfold pred
+  cases hfind : c.edges.find? (fun p => decide (p.2 = r)) with
+  | none => simp
+  | some q =>
+    exfalso
+    have hq := List.mem_of_find?_eq_some hfind
+    have hqr : q.2 = r := by
+      have := List.find?_some hfind; simpa using this
+    unfold roots at hr
+    rw [List.mem_filter] at hr
+    have hnot := hr.2
+    simp only [decide_eq_true_eq] at hnot
+    exact hnot (hqr ▸ List.mem_map_of_mem hq)
+
+/-- 道の 1 歩目の前任者は出発点そのもの。 -/
+theorem pred_followList_head {N : ℕ} (c : ConcState N) (ht : TargetsNodup c)
+    {x : Fin N} {fuel : ℕ} {a : Fin N}
+    (ha : (followList c.edges (fuel + 1) x).head? = some a) :
+    pred c a = some x := by
+  rw [followList] at ha
+  cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+  | none => rw [hfind] at ha; simp at ha
+  | some p =>
+    rw [hfind] at ha
+    simp only [List.head?_cons, Option.some.injEq] at ha
+    subst ha
+    have hpx : p.1 = x := by
+      have := List.find?_some hfind; simpa using this
+    have hmem := List.mem_of_find?_eq_some hfind
+    have : (x, p.2) ∈ c.edges := by rw [← hpx]; simpa using hmem
+    exact pred_eq c ht this
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.pred_followList_head
 #print axioms PeriodicTM.ClaimA.followList_head_ne
 #print axioms PeriodicTM.ClaimA.root_not_mem_followList
 #print axioms PeriodicTM.ClaimA.designated_mem_roots
