@@ -1248,9 +1248,86 @@ theorem followLen_le_fuel {N : ℕ} (edges : List (Fin N × Fin N)) :
       omega
     | none => simp
 
+/-! ### 辺は allocation 順を必ず進む（＝閉路がない）
+
+`withQueried` により始点も開示済みに入るので、辺の両端はどちらも
+`used` の要素。しかも終点は常に**最後に**追加された新規点なので、
+`used` 内の位置は始点 < 終点。したがって辺を辿ると位置が単調に増え、
+**閉路は存在しない**（research/09 の「パスは閉包しない」の Lean 版）。 -/
+
+/-- 辺の始点も開示済み。 -/
+def SourcesInUsed {N : ℕ} (c : ConcState N) : Prop :=
+  ∀ p ∈ c.edges, p.1 ∈ c.used
+
+/-- 辺は `used` 内の位置を進める。 -/
+def EdgesIncreasing {N : ℕ} (c : ConcState N) : Prop :=
+  ∀ p ∈ c.edges, c.used.idxOf p.1 < c.used.idxOf p.2
+
+theorem concStep_sources_in_used {N : ℕ} (c : ConcState N) (x : Fin N)
+    (h : SourcesInUsed c) : SourcesInUsed (concStep c x) := by
+  unfold SourcesInUsed concStep
+  cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+  | some p => exact h
+  | none =>
+    cases hfresh : freshVertex N (withQueried c.used x) with
+    | none => exact h
+    | some v =>
+      intro p hp
+      rcases List.mem_append.mp hp with hp' | hp'
+      · exact List.mem_append.mpr
+          (Or.inl (subset_withQueried c.used x (h p hp')))
+      · rw [List.mem_singleton] at hp'
+        subst hp'
+        refine List.mem_append.mpr (Or.inl ?_)
+        unfold withQueried
+        split
+        · assumption
+        · exact List.mem_append.mpr (Or.inr (List.mem_singleton_self x))
+
+/-- **辺は位置を進める（1手で保たれる）** — 閉路がないことの核。 -/
+theorem concStep_edges_increasing {N : ℕ} (c : ConcState N) (x : Fin N)
+    (hs : SourcesInUsed c) (ht : TargetsInUsed c) (h : EdgesIncreasing c) :
+    EdgesIncreasing (concStep c x) := by
+  unfold EdgesIncreasing concStep
+  cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+  | some p => exact h
+  | none =>
+    cases hfresh : freshVertex N (withQueried c.used x) with
+    | none => exact h
+    | some v =>
+      have hvnot : v ∉ withQueried c.used x := freshVertex_not_mem hfresh
+      intro p hp
+      rcases List.mem_append.mp hp with hp' | hp'
+      · -- 既存の辺: 位置は変わらない
+        have h1 : p.1 ∈ withQueried c.used x :=
+          subset_withQueried c.used x (hs p hp')
+        have h2 : p.2 ∈ withQueried c.used x :=
+          subset_withQueried c.used x (ht p hp')
+        rw [List.idxOf_append_of_mem h1, List.idxOf_append_of_mem h2]
+        -- `withQueried` 側でも位置は元のまま
+        unfold withQueried
+        split
+        · exact h p hp'
+        · rw [List.idxOf_append_of_mem (hs p hp'),
+            List.idxOf_append_of_mem (ht p hp')]
+          exact h p hp'
+      · -- 新しい辺 (x, v): x は既存の位置、v は末尾
+        rw [List.mem_singleton] at hp'
+        subst hp'
+        have hx : x ∈ withQueried c.used x := by
+          unfold withQueried; split
+          · assumption
+          · exact List.mem_append.mpr (Or.inr (List.mem_singleton_self x))
+        rw [List.idxOf_append_of_mem hx,
+          List.idxOf_append_of_notMem hvnot]
+        have := List.idxOf_lt_length_of_mem hx
+        simp
+        omega
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.concStep_edges_increasing
 #print axioms PeriodicTM.ClaimA.concPlay_edges_length_le
 #print axioms PeriodicTM.ClaimA.concPlay_targets
 #print axioms PeriodicTM.ClaimA.concPlay_sources_nodup
