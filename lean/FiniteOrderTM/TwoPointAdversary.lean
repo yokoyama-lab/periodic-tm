@@ -1692,9 +1692,44 @@ theorem followList_predIter {N : ℕ} (c : ConcState N) (ht : TargetsNodup c) :
         rw [hk]
         simpa using pred_eq c ht hedge
 
+/-- **異なる根から出る道は互いに素**。
+共有点があれば、そこから両方の根へ遡れる。遡行は決定的なので、
+遡り回数が同じなら根が一致（矛盾）、違えば一方の根からさらに遡れる
+ことになり `predIter_root_none` に反する。
+research/09 の敵対者不変量 (i) の完全形。 -/
+theorem roots_paths_disjoint {N : ℕ} (c : ConcState N) (ht : TargetsNodup c)
+    {x y : Fin N} (hx : x ∈ roots c) (hy : y ∈ roots c) (hne : x ≠ y)
+    (fuel : ℕ) :
+    ∀ z ∈ followList c.edges fuel x, z ∉ followList c.edges fuel y := by
+  intro z hzx hzy
+  obtain ⟨k, hk⟩ := followList_predIter c ht fuel x z hzx
+  obtain ⟨j, hj⟩ := followList_predIter c ht fuel y z hzy
+  rcases lt_trichotomy k j with h | h | h
+  · -- k < j: y へは x からさらに遡ることになる
+    have harith : (k + 1) + (j - k) = j + 1 := by omega
+    have hsplit := predIter_add c (k + 1) (j - k) z
+    rw [harith, hk, hj] at hsplit
+    simp only [Option.bind_some] at hsplit
+    obtain ⟨m, hm⟩ : ∃ m, j - k = m + 1 := ⟨j - k - 1, by omega⟩
+    rw [hm, predIter_root_none c hx m] at hsplit
+    simp at hsplit
+  · -- 同じ回数なら根が一致
+    subst h
+    rw [hk] at hj
+    exact hne (Option.some.inj hj)
+  · -- j < k: 対称
+    have harith : (j + 1) + (k - j) = k + 1 := by omega
+    have hsplit := predIter_add c (j + 1) (k - j) z
+    rw [harith, hj, hk] at hsplit
+    simp only [Option.bind_some] at hsplit
+    obtain ⟨m, hm⟩ : ∃ m, k - j = m + 1 := ⟨k - j - 1, by omega⟩
+    rw [hm, predIter_root_none c hy m] at hsplit
+    simp at hsplit
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.roots_paths_disjoint
 #print axioms PeriodicTM.ClaimA.followList_predIter
 #print axioms PeriodicTM.ClaimA.pred_followList_head
 #print axioms PeriodicTM.ClaimA.followList_head_ne
