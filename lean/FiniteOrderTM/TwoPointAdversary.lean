@@ -1324,9 +1324,57 @@ theorem concStep_edges_increasing {N : ℕ} (c : ConcState N) (x : Fin N)
         simp
         omega
 
+/-! ### 不変量の束（パス森であることの一括表明） -/
+
+/-- 具体状態が「開示部分は互いに素な有向パスの族」を満たす。 -/
+structure WellFormed {N : ℕ} (c : ConcState N) : Prop where
+  usedNodup : c.used.Nodup
+  sources : SourcesInUsed c
+  targets : TargetsInUsed c
+  srcNodup : SourcesNodup c
+  tgtNodup : TargetsNodup c
+  increasing : EdgesIncreasing c
+
+theorem concStep_wellFormed {N : ℕ} (c : ConcState N) (x : Fin N)
+    (h : WellFormed c) : WellFormed (concStep c x) where
+  usedNodup := concStep_used_nodup c x h.usedNodup
+  sources := concStep_sources_in_used c x h.sources
+  targets := concStep_targets_in_used c x h.targets
+  srcNodup := concStep_sources_nodup c x h.srcNodup
+  tgtNodup := concStep_targets_nodup c x h.targets h.tgtNodup
+  increasing := concStep_edges_increasing c x h.sources h.targets h.increasing
+
+/-- **対局を通じてパス森であり続ける**。 -/
+theorem concPlay_wellFormed {N : ℕ} :
+    ∀ {q : ℕ} (t : PeriodicTM.QueryGame.Tree N q) (c : ConcState N),
+      WellFormed c → WellFormed (concPlay t c)
+  | _, .leaf _ _, c, h => h
+  | _, .node x child, c, h =>
+    concPlay_wellFormed (child (concAnswer c x)) (concStep c x)
+      (concStep_wellFormed c x h)
+
+/-- 初期状態: 指定点 `0`・`1` だけが開示済みで、辺はまだ無い。 -/
+def initState (N : ℕ) [NeZero N] : ConcState N := ⟨[0, 1], []⟩
+
+theorem initState_wellFormed {N : ℕ} [NeZero N] (hN : 2 ≤ N) :
+    WellFormed (initState N) where
+  usedNodup := by
+    have h01 : (0 : Fin N) ≠ 1 := by
+      intro hc
+      have := congrArg Fin.val hc
+      simp [Fin.val_one', Nat.mod_eq_of_lt (by omega : 1 < N)] at this
+    simp [initState, h01]
+  sources := by intro p hp; simp [initState] at hp
+  targets := by intro p hp; simp [initState] at hp
+  srcNodup := by simp [SourcesNodup, initState]
+  tgtNodup := by simp [TargetsNodup, initState]
+  increasing := by intro p hp; simp [initState] at hp
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.concPlay_wellFormed
+#print axioms PeriodicTM.ClaimA.initState_wellFormed
 #print axioms PeriodicTM.ClaimA.concStep_edges_increasing
 #print axioms PeriodicTM.ClaimA.concPlay_edges_length_le
 #print axioms PeriodicTM.ClaimA.concPlay_targets
