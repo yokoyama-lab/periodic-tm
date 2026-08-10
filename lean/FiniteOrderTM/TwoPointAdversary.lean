@@ -1726,9 +1726,58 @@ theorem roots_paths_disjoint {N : ℕ} (c : ConcState N) (ht : TargetsNodup c)
     rw [hm, predIter_root_none c hy m] at hsplit
     simp at hsplit
 
+/-! ### 根から出る道（頭を含む） -/
+
+/-- 根 `r` の道: `r` 自身とその先。 -/
+def pathFrom {N : ℕ} (c : ConcState N) (fuel : ℕ) (r : Fin N) : List (Fin N) :=
+  r :: followList c.edges fuel r
+
+theorem pathFrom_nodup {N : ℕ} (c : ConcState N) (hi : EdgesIncreasing c)
+    {r : Fin N} (hr : r ∈ roots c) (fuel : ℕ) :
+    (pathFrom c fuel r).Nodup :=
+  List.nodup_cons.mpr
+    ⟨root_not_mem_followList c hr fuel r, followList_nodup c hi fuel r⟩
+
+/-- **異なる根の道は（頭も含めて）互いに素**。 -/
+theorem pathFrom_disjoint {N : ℕ} (c : ConcState N) (ht : TargetsNodup c)
+    {r s : Fin N} (hr : r ∈ roots c) (hs : s ∈ roots c) (hne : r ≠ s)
+    (fuel : ℕ) :
+    List.Disjoint (pathFrom c fuel r) (pathFrom c fuel s) := by
+  intro z hz hz'
+  unfold pathFrom at hz hz'
+  rcases List.mem_cons.mp hz with rfl | hz₁
+  · rcases List.mem_cons.mp hz' with h | h
+    · exact hne h
+    · exact root_not_mem_followList c hr fuel s h
+  · rcases List.mem_cons.mp hz' with rfl | h
+    · exact root_not_mem_followList c hs fuel r hz₁
+    · exact roots_paths_disjoint c ht hr hs hne fuel z hz₁ h
+
+/-- グループ順の標識: `0` の道・`1` の道・迷いパスの道を順に並べたもの。 -/
+def groupedList {N : ℕ} [NeZero N] (c : ConcState N) (fuel : ℕ) :
+    List (Fin N) :=
+  pathFrom c fuel 0 ++ pathFrom c fuel 1 ++
+    (strayRoots c).flatMap (pathFrom c fuel)
+
+/-- 迷いパスの根は根である。 -/
+theorem strayRoots_subset_roots {N : ℕ} [NeZero N] (c : ConcState N) :
+    ∀ r ∈ strayRoots c, r ∈ roots c := by
+  intro r hr
+  unfold strayRoots at hr
+  exact (List.mem_filter.mp hr).1
+
+/-- 迷いパスの根は指定点ではない。 -/
+theorem strayRoots_ne_designated {N : ℕ} [NeZero N] (c : ConcState N) :
+    ∀ r ∈ strayRoots c, r ≠ (0 : Fin N) ∧ r ≠ (1 : Fin N) := by
+  intro r hr
+  unfold strayRoots at hr
+  have := (List.mem_filter.mp hr).2
+  simpa using this
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.pathFrom_disjoint
 #print axioms PeriodicTM.ClaimA.roots_paths_disjoint
 #print axioms PeriodicTM.ClaimA.followList_predIter
 #print axioms PeriodicTM.ClaimA.pred_followList_head
