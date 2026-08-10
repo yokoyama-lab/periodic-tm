@@ -1774,9 +1774,55 @@ theorem strayRoots_ne_designated {N : ℕ} [NeZero N] (c : ConcState N) :
   have := (List.mem_filter.mp hr).2
   simpa using this
 
+/-- **グループ順の標識は重複しない**。3つの部分（`0` の道・`1` の道・
+迷いの道の連結）がそれぞれ Nodup で、互いに素だから。 -/
+theorem groupedList_nodup {N : ℕ} [NeZero N] (c : ConcState N)
+    (hw : WellFormed c) (hd : DesignatedUsed c) (hn : NoTargetDesignated c)
+    (hN : 2 ≤ N) (fuel : ℕ) : (groupedList c fuel).Nodup := by
+  have h0 : (0 : Fin N) ∈ roots c := (designated_mem_roots c hd hn).1
+  have h1 : (1 : Fin N) ∈ roots c := (designated_mem_roots c hd hn).2
+  have h01 : (0 : Fin N) ≠ 1 := by
+    intro hc
+    have := congrArg Fin.val hc
+    simp [Fin.val_one', Nat.mod_eq_of_lt (by omega : 1 < N)] at this
+  have np0 := pathFrom_nodup c hw.increasing h0 fuel
+  have np1 := pathFrom_nodup c hw.increasing h1 fuel
+  have d01 := pathFrom_disjoint c hw.tgtNodup h0 h1 h01 fuel
+  -- 迷いの道の連結が Nodup
+  have nflat : ((strayRoots c).flatMap (pathFrom c fuel)).Nodup := by
+    rw [List.nodup_flatMap]
+    refine ⟨fun r hr =>
+      pathFrom_nodup c hw.increasing (strayRoots_subset_roots c r hr) fuel, ?_⟩
+    refine List.Pairwise.imp_of_mem ?_ (strayRoots_nodup c hw.usedNodup)
+    intro a b ha hb hab
+    exact pathFrom_disjoint c hw.tgtNodup (strayRoots_subset_roots c a ha)
+      (strayRoots_subset_roots c b hb) hab fuel
+  -- 指定点の道と迷いの道は互いに素
+  have d0f : List.Disjoint (pathFrom c fuel 0)
+      ((strayRoots c).flatMap (pathFrom c fuel)) := by
+    intro z hz hzf
+    obtain ⟨r, hr, hzr⟩ := List.mem_flatMap.mp hzf
+    exact pathFrom_disjoint c hw.tgtNodup h0
+      (strayRoots_subset_roots c r hr)
+      (fun hc => (strayRoots_ne_designated c r hr).1 hc.symm) fuel hz hzr
+  have d1f : List.Disjoint (pathFrom c fuel 1)
+      ((strayRoots c).flatMap (pathFrom c fuel)) := by
+    intro z hz hzf
+    obtain ⟨r, hr, hzr⟩ := List.mem_flatMap.mp hzf
+    exact pathFrom_disjoint c hw.tgtNodup h1
+      (strayRoots_subset_roots c r hr)
+      (fun hc => (strayRoots_ne_designated c r hr).2 hc.symm) fuel hz hzr
+  unfold groupedList
+  refine List.Nodup.append (List.Nodup.append np0 np1 d01) nflat ?_
+  intro z hz hzf
+  rcases List.mem_append.mp hz with h | h
+  · exact d0f h hzf
+  · exact d1f h hzf
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.groupedList_nodup
 #print axioms PeriodicTM.ClaimA.pathFrom_disjoint
 #print axioms PeriodicTM.ClaimA.roots_paths_disjoint
 #print axioms PeriodicTM.ClaimA.followList_predIter
