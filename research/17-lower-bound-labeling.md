@@ -117,6 +117,30 @@ P₁ と迷い頂点の番号がすべて 1 ずつずれる**。
 | **`runs_iff_good_concPlayLeaf`** | **最終状態の完成 → 各手の一致 → 同じ葉** |
 | `not_winsAt_of_bad_concLeaf` | 葉の出力が悪ければ木は勝てない |
 
+## パス森の構造が揃った（2026-08-10、ループ #66〜69）
+
+`groupedList`（`0` の道 ++ `1` の道 ++ 迷いパスの道）が **`used` の
+並べ替えである**ことを言うのに要る2つの性質が両方揃った。
+
+| 向き | 補題 | 内容 |
+|---|---|---|
+| 単射性 | `groupedList_nodup` | 3部分が Nodup かつ互いに素（`pathFrom_disjoint`） |
+| 被覆 | **`exists_root_mem_pathFrom`** | 開示点はどれかの根の道の上にある |
+
+被覆の道具立て:
+
+| 補題 | 内容 |
+|---|---|
+| `mem_roots_of_pred_none` | 前任者のいない開示点は根 |
+| `pred_lt` | 前任者は開示点で `used` 内の位置が真に小さい |
+| `exists_root_predIter` | **遡行の停止性**（位置による帰納。遡る回数は `idxOf` 以下） |
+| `pred_mem_edges` / `followList_head_of_edge` | 辺 `(w,v)` は `w` の道の1歩目が `v` |
+| `predIter_mem_followList` | **遡行の逆**（遡れた先の道に元の点が乗る） |
+| `followList_mono` | 燃料の単調性（`fuel := used.length` で統一できる） |
+
+残るのは「`groupedList` が `used` の並べ替え」の明示（Nodup＋被覆＋
+長さ、あるいは `List.Perm` の直接構成）と、そこからの `τ` の抽出。
+
 ### 残り
 
 1. 具体状態 `ConcState` から抽象状態 `AdvState`（形）への対応づけ
