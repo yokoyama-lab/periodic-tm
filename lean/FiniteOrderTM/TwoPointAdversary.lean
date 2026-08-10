@@ -1370,9 +1370,60 @@ theorem initState_wellFormed {N : ℕ} [NeZero N] (hN : 2 ≤ N) :
   tgtNodup := by simp [TargetsNodup, initState]
   increasing := by intro p hp; simp [initState] at hp
 
+/-! ### パスの頂点列（グループ順の標識を作る道具）
+
+`followList edges fuel x` は `x` から辺を辿って訪れる点の列（`x` 自身は
+含まない）。閉路がない（`EdgesIncreasing`）ので、`used` 内の位置が
+単調に増え、列は重複しない。 -/
+
+def followList {N : ℕ} (edges : List (Fin N × Fin N)) :
+    ℕ → Fin N → List (Fin N)
+  | 0, _ => []
+  | fuel + 1, x =>
+      match edges.find? (fun p => decide (p.1 = x)) with
+      | some p => p.2 :: followList edges fuel p.2
+      | none => []
+
+/-- 辿った先はすべて出発点より後ろ（`used` 内の位置が大きい）。 -/
+theorem followList_idxOf_gt {N : ℕ} (c : ConcState N)
+    (h : EdgesIncreasing c) :
+    ∀ (fuel : ℕ) (x : Fin N), ∀ y ∈ followList c.edges fuel x,
+      c.used.idxOf x < c.used.idxOf y
+  | 0, x, y, hy => by simp [followList] at hy
+  | fuel + 1, x, y, hy => by
+    rw [followList] at hy
+    cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+    | none => rw [hfind] at hy; simp at hy
+    | some p =>
+      rw [hfind] at hy
+      have hpm := List.mem_of_find?_eq_some hfind
+      have hpx : p.1 = x := by
+        have := List.find?_some hfind; simpa using this
+      have hstep : c.used.idxOf x < c.used.idxOf p.2 := by
+        have := h p hpm; rwa [hpx] at this
+      rcases List.mem_cons.mp hy with rfl | hy'
+      · exact hstep
+      · exact lt_trans hstep (followList_idxOf_gt c h fuel p.2 y hy')
+
+/-- **辿った列は重複しない**（閉路がないことの帰結）。 -/
+theorem followList_nodup {N : ℕ} (c : ConcState N) (h : EdgesIncreasing c) :
+    ∀ (fuel : ℕ) (x : Fin N), (followList c.edges fuel x).Nodup
+  | 0, x => by simp [followList]
+  | fuel + 1, x => by
+    rw [followList]
+    cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+    | none => simp
+    | some p =>
+      simp only []
+      refine List.nodup_cons.mpr ⟨?_, followList_nodup c h fuel p.2⟩
+      intro hmem
+      have := followList_idxOf_gt c h fuel p.2 p.2 hmem
+      omega
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.followList_nodup
 #print axioms PeriodicTM.ClaimA.concPlay_wellFormed
 #print axioms PeriodicTM.ClaimA.initState_wellFormed
 #print axioms PeriodicTM.ClaimA.concStep_edges_increasing
