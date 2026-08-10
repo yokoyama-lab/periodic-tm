@@ -1819,9 +1819,44 @@ theorem groupedList_nodup {N : ℕ} [NeZero N] (c : ConcState N)
   · exact d0f h hzf
   · exact d1f h hzf
 
+/-- 前任者がいない開示点は根。 -/
+theorem mem_roots_of_pred_none {N : ℕ} (c : ConcState N) {v : Fin N}
+    (hv : v ∈ c.used) (h : pred c v = none) : v ∈ roots c := by
+  unfold roots
+  rw [List.mem_filter]
+  refine ⟨hv, ?_⟩
+  simp only [decide_eq_true_eq]
+  intro hmem
+  obtain ⟨p, hp, hpv⟩ := List.mem_map.mp hmem
+  unfold pred at h
+  cases hfind : c.edges.find? (fun q => decide (q.2 = v)) with
+  | none =>
+    have := List.find?_eq_none.mp hfind p hp
+    simp [hpv] at this
+  | some q => rw [hfind] at h; simp at h
+
+/-- 前任者は開示点で、`used` 内の位置が真に小さい。 -/
+theorem pred_lt {N : ℕ} (c : ConcState N) (hs : SourcesInUsed c)
+    (hi : EdgesIncreasing c) {v w : Fin N} (h : pred c v = some w) :
+    w ∈ c.used ∧ c.used.idxOf w < c.used.idxOf v := by
+  unfold pred at h
+  cases hfind : c.edges.find? (fun p => decide (p.2 = v)) with
+  | none => rw [hfind] at h; simp at h
+  | some p =>
+    rw [hfind] at h
+    simp only [Option.map_some, Option.some.injEq] at h
+    subst h
+    have hp := List.mem_of_find?_eq_some hfind
+    have hpv : p.2 = v := by
+      have := List.find?_some hfind; simpa using this
+    refine ⟨hs p hp, ?_⟩
+    have := hi p hp
+    rwa [hpv] at this
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.pred_lt
 #print axioms PeriodicTM.ClaimA.groupedList_nodup
 #print axioms PeriodicTM.ClaimA.pathFrom_disjoint
 #print axioms PeriodicTM.ClaimA.roots_paths_disjoint
