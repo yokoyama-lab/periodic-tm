@@ -1508,9 +1508,48 @@ theorem designated_mem_roots {N : ℕ} [NeZero N] (c : ConcState N)
       | exact this.1 hpv
       | exact this.2 hpv)
 
+/-- 辿って訪れる点はすべて何かの辺の終点。 -/
+theorem followList_mem_targets {N : ℕ} (c : ConcState N) :
+    ∀ (fuel : ℕ) (x : Fin N), ∀ y ∈ followList c.edges fuel x,
+      y ∈ c.edges.map Prod.snd
+  | 0, x, y, hy => by simp [followList] at hy
+  | fuel + 1, x, y, hy => by
+    rw [followList] at hy
+    cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+    | none => rw [hfind] at hy; simp at hy
+    | some p =>
+      rw [hfind] at hy
+      rcases List.mem_cons.mp hy with rfl | hy'
+      · exact List.mem_map_of_mem (List.mem_of_find?_eq_some hfind)
+      · exact followList_mem_targets c fuel p.2 y hy'
+
+/-- **根はどのパスの内部にも現れない**（根は入辺を持たないから）。
+これで「0 の道・1 の道・迷いの道」の頭が互いの内部と衝突しないことが
+言え、グループ順の標識を組む土台になる。 -/
+theorem root_not_mem_followList {N : ℕ} (c : ConcState N) {r : Fin N}
+    (hr : r ∈ roots c) (fuel : ℕ) (x : Fin N) :
+    r ∉ followList c.edges fuel x := by
+  intro hmem
+  have htar := followList_mem_targets c fuel x r hmem
+  unfold roots at hr
+  rw [List.mem_filter] at hr
+  have := hr.2
+  simp only [decide_eq_true_eq] at this
+  exact this htar
+
+/-- 系: 指定点 `0`・`1` はどのパスの内部にも現れない。 -/
+theorem designated_not_mem_followList {N : ℕ} [NeZero N] (c : ConcState N)
+    (hd : DesignatedUsed c) (hn : NoTargetDesignated c) (fuel : ℕ)
+    (x : Fin N) :
+    (0 : Fin N) ∉ followList c.edges fuel x ∧
+      (1 : Fin N) ∉ followList c.edges fuel x :=
+  ⟨root_not_mem_followList c (designated_mem_roots c hd hn).1 fuel x,
+    root_not_mem_followList c (designated_mem_roots c hd hn).2 fuel x⟩
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.root_not_mem_followList
 #print axioms PeriodicTM.ClaimA.designated_mem_roots
 #print axioms PeriodicTM.ClaimA.followList_nodup
 #print axioms PeriodicTM.ClaimA.concPlay_wellFormed
