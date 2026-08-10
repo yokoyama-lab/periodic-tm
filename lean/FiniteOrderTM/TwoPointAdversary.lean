@@ -1639,9 +1639,63 @@ theorem pred_followList_head {N : ℕ} (c : ConcState N) (ht : TargetsNodup c)
     have : (x, p.2) ∈ c.edges := by rw [← hpx]; simpa using hmem
     exact pred_eq c ht this
 
+/-- `pred` を `k` 回さかのぼる（最後に適用する形）。 -/
+def predIter {N : ℕ} (c : ConcState N) : ℕ → Fin N → Option (Fin N)
+  | 0, z => some z
+  | k + 1, z => (predIter c k z).bind (pred c)
+
+/-- 根からは 1 回もさかのぼれない。 -/
+theorem predIter_root_none {N : ℕ} (c : ConcState N) {r : Fin N}
+    (hr : r ∈ roots c) : ∀ k : ℕ, predIter c (k + 1) r = none := by
+  intro k
+  induction k with
+  | zero => simp [predIter, pred_eq_none_of_root c hr]
+  | succ k ih =>
+    show (predIter c (k + 1) r).bind (pred c) = none
+    rw [ih]
+    rfl
+
+/-- さかのぼりの合成。 -/
+theorem predIter_add {N : ℕ} (c : ConcState N) (a : ℕ) :
+    ∀ (b : ℕ) (z : Fin N),
+      predIter c (a + b) z = (predIter c a z).bind (predIter c b)
+  | 0, z => by simp [predIter]
+  | b + 1, z => by
+    have ih := predIter_add c a b z
+    show (predIter c (a + b) z).bind (pred c) = _
+    rw [ih]
+    cases h : predIter c a z with
+    | none => simp [predIter]
+    | some w => simp [predIter]
+
+/-- **道の各点からは出発点へさかのぼれる**（1 回以上）。 -/
+theorem followList_predIter {N : ℕ} (c : ConcState N) (ht : TargetsNodup c) :
+    ∀ (fuel : ℕ) (x z : Fin N), z ∈ followList c.edges fuel x →
+      ∃ k, predIter c (k + 1) z = some x
+  | 0, x, z, hz => by simp [followList] at hz
+  | fuel + 1, x, z, hz => by
+    rw [followList] at hz
+    cases hfind : c.edges.find? (fun p => decide (p.1 = x)) with
+    | none => rw [hfind] at hz; simp at hz
+    | some p =>
+      rw [hfind] at hz
+      have hpx : p.1 = x := by
+        have := List.find?_some hfind; simpa using this
+      have hedge : (x, p.2) ∈ c.edges := by
+        have := List.mem_of_find?_eq_some hfind
+        rw [← hpx]; simpa using this
+      rcases List.mem_cons.mp hz with rfl | hz'
+      · exact ⟨0, by simp [predIter, pred_eq c ht hedge]⟩
+      · obtain ⟨k, hk⟩ := followList_predIter c ht fuel p.2 z hz'
+        refine ⟨k + 1, ?_⟩
+        show (predIter c (k + 1) z).bind (pred c) = some x
+        rw [hk]
+        simpa using pred_eq c ht hedge
+
 end PeriodicTM.ClaimA
 
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
+#print axioms PeriodicTM.ClaimA.followList_predIter
 #print axioms PeriodicTM.ClaimA.pred_followList_head
 #print axioms PeriodicTM.ClaimA.followList_head_ne
 #print axioms PeriodicTM.ClaimA.root_not_mem_followList
