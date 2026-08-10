@@ -1853,8 +1853,156 @@ theorem pred_lt {N : ℕ} (c : ConcState N) (hs : SourcesInUsed c)
     have := hi p hp
     rwa [hpv] at this
 
+/-! ### 遡行は必ず根で止まる
+
+`pred` は `used` 内の位置を真に減らす（`pred_lt`）ので、位置を上界に
+した帰納で有限回のうちに前任者がいなくなる。前任者がいない開示点は根
+（`mem_roots_of_pred_none`）なので、**開示点はすべてどれかの根から
+遡行可能**。パス森の「各点はちょうど 1 本の道に属する」の前半である。 -/
+
+/-- 位置の上界による帰納（補助）。 -/
+theorem exists_root_predIter_aux {N : ℕ} (c : ConcState N)
+    (hs : SourcesInUsed c) (hi : EdgesIncreasing c) :
+    ∀ (n : ℕ) (v : Fin N), v ∈ c.used → c.used.idxOf v ≤ n →
+      ∃ k r, k ≤ n ∧ predIter c k v = some r ∧ r ∈ roots c
+  | 0, v, hv, hle => by
+    cases h : pred c v with
+    | none => exact ⟨0, v, le_rfl, rfl, mem_roots_of_pred_none c hv h⟩
+    | some w =>
+      exfalso
+      have := (pred_lt c hs hi h).2
+      omega
+  | n + 1, v, hv, hle => by
+    cases h : pred c v with
+    | none => exact ⟨0, v, Nat.zero_le _, rfl, mem_roots_of_pred_none c hv h⟩
+    | some w =>
+      obtain ⟨hwu, hlt⟩ := pred_lt c hs hi h
+      obtain ⟨k, r, hkn, hk, hr⟩ :=
+        exists_root_predIter_aux c hs hi n w hwu (by omega)
+      refine ⟨1 + k, r, by omega, ?_, hr⟩
+      rw [predIter_add c 1 k v]
+      have h1 : predIter c 1 v = some w := by
+        show (predIter c 0 v).bind (pred c) = some w
+        simpa [predIter] using h
+      rw [h1]
+      simpa using hk
+
+/-- **開示点はどれかの根まで遡れる**（遡行の停止性）。遡る回数は
+`used` 内の位置以下。 -/
+theorem exists_root_predIter {N : ℕ} (c : ConcState N)
+    (hs : SourcesInUsed c) (hi : EdgesIncreasing c) {v : Fin N}
+    (hv : v ∈ c.used) :
+    ∃ k r, k ≤ c.used.idxOf v ∧ predIter c k v = some r ∧ r ∈ roots c :=
+  exists_root_predIter_aux c hs hi (c.used.idxOf v) v hv le_rfl
+
+/-! ### 遡行の逆 — 遡れた先の道には元の点が乗っている
+
+`exists_root_predIter` は「根まで遡れる」ことしか言わない。被覆
+（`groupedList` が `used` を尽くす）には逆向き、すなわち
+**`predIter c k v = some r` なら `v` は `r` の道の上にある**が要る。
+始点の重複しなさ（`SourcesNodup`）から、辺 `(w, v)` は `w` の道の
+1 歩目が `v` であることを与える。 -/
+
+/-- 前任者の辺は実在する。 -/
+theorem pred_mem_edges {N : ℕ} (c : ConcState N) {v w : Fin N}
+    (h : pred c v = some w) : (w, v) ∈ c.edges := by
+  unfold pred at h
+  cases hfind : c.edges.find? (fun p => decide (p.2 = v)) with
+  | none => rw [hfind] at h; simp at h
+  | some p =>
+    rw [hfind] at h
+    simp only [Option.map_some, Option.some.injEq] at h
+    have hp := List.mem_of_find?_eq_some hfind
+    have hpv : p.2 = v := by
+      have := List.find?_some hfind; simpa using this
+    have : p = (w, v) := Prod.ext h hpv
+    rwa [← this]
+
+/-- 辺 `(w, v)` があれば、`w` からの道は `v` で始まる。 -/
+theorem followList_head_of_edge {N : ℕ} (c : ConcState N)
+    (hs : SourcesNodup c) {w v : Fin N} (h : (w, v) ∈ c.edges) (fuel : ℕ) :
+    followList c.edges (fuel + 1) w = v :: followList c.edges fuel v := by
+  rw [followList]
+  cases hfind : c.edges.find? (fun p => decide (p.1 = w)) with
+  | none =>
+    exfalso
+    have := List.find?_eq_none.mp hfind (w, v) h
+    simp at this
+  | some q =>
+    have hq := List.mem_of_find?_eq_some hfind
+    have hqw : q.1 = w := by
+      have := List.find?_some hfind; simpa using this
+    have hqv : q = (w, v) :=
+      List.inj_on_of_nodup_map hs hq h (by simp [hqw])
+    simp [hqv]
+
+/-- **遡行の逆**: `k + 1` 回遡って `r` に着くなら、`v` は `r` の道の上。 -/
+theorem predIter_mem_followList {N : ℕ} (c : ConcState N)
+    (hs : SourcesNodup c) :
+    ∀ (k : ℕ) (v r : Fin N), predIter c (k + 1) v = some r →
+      v ∈ followList c.edges (k + 1) r
+  | 0, v, r, h => by
+    have h0 : (predIter c 0 v).bind (pred c) = some r := h
+    have h' : pred c v = some r := by simpa [predIter] using h0
+    rw [followList_head_of_edge c hs (pred_mem_edges c h') 0]
+    simp
+  | k + 1, v, r, h => by
+    have h2 : (predIter c (k + 1) v).bind (pred c) = some r := h
+    cases hu : predIter c (k + 1) v with
+    | none => rw [hu] at h2; simp at h2
+    | some u =>
+      rw [hu] at h2
+      simp only [Option.bind_some] at h2
+      have hmem := predIter_mem_followList c hs k v u hu
+      rw [followList_head_of_edge c hs (pred_mem_edges c h2) (k + 1)]
+      exact List.mem_cons_of_mem _ hmem
+
+/-- 燃料を増やしても道は縮まない。 -/
+theorem followList_mono {N : ℕ} (edges : List (Fin N × Fin N)) :
+    ∀ (a b : ℕ), a ≤ b → ∀ (x z : Fin N),
+      z ∈ followList edges a x → z ∈ followList edges b x
+  | 0, _, _, x, z, hz => by simp [followList] at hz
+  | a + 1, 0, hab, _, _, _ => absurd hab (by omega)
+  | a + 1, b + 1, hab, x, z, hz => by
+    rw [followList] at hz
+    rw [followList]
+    cases hfind : edges.find? (fun p => decide (p.1 = x)) with
+    | none => rw [hfind] at hz; simp at hz
+    | some p =>
+      rw [hfind] at hz
+      show z ∈ p.2 :: followList edges b p.2
+      rcases List.mem_cons.mp hz with rfl | hz'
+      · simp
+      · exact List.mem_cons_of_mem _
+          (followList_mono edges a b (by omega) p.2 z hz')
+
+/-- **開示点はどれかの根の道の上にある**（被覆）。`pathFrom_disjoint`
+（道どうしは互いに素）と合わせて、「開示部分はちょうど根の道の
+非交和である」が言えたことになる。 -/
+theorem exists_root_mem_pathFrom {N : ℕ} (c : ConcState N)
+    (hw : WellFormed c) {v : Fin N} (hv : v ∈ c.used) {fuel : ℕ}
+    (hfuel : c.used.length ≤ fuel) :
+    ∃ r ∈ roots c, v ∈ pathFrom c fuel r := by
+  obtain ⟨k, r, hkn, hk, hr⟩ :=
+    exists_root_predIter c hw.sources hw.increasing hv
+  have hidx : c.used.idxOf v < c.used.length := List.idxOf_lt_length_of_mem hv
+  refine ⟨r, hr, ?_⟩
+  cases k with
+  | zero =>
+    have : v = r := by simpa [predIter] using hk
+    subst this
+    exact List.mem_cons_self
+  | succ j =>
+    refine List.mem_cons_of_mem _ ?_
+    exact followList_mono c.edges (j + 1) fuel (by omega) r v
+      (predIter_mem_followList c hw.srcNodup j v r hk)
+
 end PeriodicTM.ClaimA
 
+#print axioms PeriodicTM.ClaimA.exists_root_mem_pathFrom
+#print axioms PeriodicTM.ClaimA.predIter_mem_followList
+#print axioms PeriodicTM.ClaimA.followList_mono
+#print axioms PeriodicTM.ClaimA.exists_root_predIter
 #print axioms PeriodicTM.ClaimA.AdvState.steps_q_le
 #print axioms PeriodicTM.ClaimA.pred_lt
 #print axioms PeriodicTM.ClaimA.groupedList_nodup
