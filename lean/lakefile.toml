@@ -1,5 +1,5 @@
 name = "FiniteOrderTM"
-defaultTargets = ["FiniteOrderTM"]
+defaultTargets = ["FiniteOrderTM", "Audit"]
 
 [[require]]
 name = "mathlib"
@@ -8,3 +8,9 @@ rev = "v4.30.0"
 
 [[lean_lib]]
 name = "FiniteOrderTM"
+
+# 公理監査（`Audit.lean`）。既定ターゲットに入れておかないと誰も走らせず、
+# 実際 2026-07-23〜08-21 の間、19 件の unknown constant で壊れたまま
+# 気づかれなかった。
+[[lean_lib]]
+name = "Audit"

@@ -4,9 +4,11 @@ FiniteOrderTM/TwoPointClaimACert.lean
 Bounded certificates (`native_decide`) for Claim A of Lemma 9.7
 (`FiniteOrderTM/TwoPointClaimA.lean`), matching research/claimA_check.py.
 
-BUILD NOTE.  Like `QueryGame.lean`, this file is deliberately NOT
-imported from the root `FiniteOrderTM.lean` (native_decide build cost);
-check it with `lake env lean FiniteOrderTM/TwoPointClaimACert.lean`.
+BUILD NOTE (corrected 2026-08-21).  This file used to be excluded from
+the root `FiniteOrderTM.lean` for build cost, which meant these
+certificates never ran in the nightly `lake build` — an unrun check is
+indistinguishable from "no problem found".  It is now imported from the
+root; the measured one-off cost is 472 s (cached afterwards).
 
 Layer convention: every theorem here is Layer-2 bounded certification
 (compiled evaluation); the definitions being evaluated are the
@@ -41,6 +43,56 @@ theorem cex_formula : FormulaSide 6 4 cex := by decide
 exists — the formula over-counts outside the region, exactly as the
 double-implementation check found. -/
 theorem cex_no_completion : ¬ CompletionSide 6 4 cex := by native_decide
+
+/-! ## ALL EIGHT out-of-region counterexamples (completed 2026-08-22)
+
+`research/claimA_check.py --list-outside` enumerates exactly EIGHT
+states over the whole sweep (`ℓ ∈ {3,4,5,6}`, `ℓ < N ≤ 10`) where the
+formula side and the brute force disagree.  Until 2026-08-22 only the
+first one (`cex` above, `N=6, ℓ=4`) was certified here; the other SEVEN
+had never been checked by Lean at all, even though the stated goal of
+the mechanisation was to check that the known counterexamples come out
+FALSE.  They are all certified below.
+
+The eight, as printed by the oracle (every one has
+`brute = False, formula = True` — the formula over-counts, it never
+under-counts):
+
+    N=6 ℓ=4 k₀=0 k₁=0 strays=[1,1]     ← `cex` above
+    N=8 ℓ=6 k₀=0 k₁=0 strays=[1,1,1]
+    N=8 ℓ=6 k₀=0 k₁=0 strays=[2,2]
+    N=8 ℓ=6 k₀=0 k₁=0 strays=[3,1]
+    N=8 ℓ=6 k₀=1 k₁=0 strays=[2,1]
+    N=8 ℓ=6 k₀=2 k₁=0 strays=[1,1]
+    N=9 ℓ=6 k₀=0 k₁=0 strays=[2,2]
+    N=9 ℓ=6 k₀=0 k₁=1 strays=[1,1,1]
+
+Note every one of them has at least TWO stray paths — consistent with
+the diagnosis in research/09 that the formula's (⇐) direction ignores
+the ATOMICITY of stray paths (a cycle must swallow a stray path whole,
+so the formula's vertex budget is too generous).
+
+`¬ CompletionSide` is an exhaustive statement over `Perm (Fin N)`
+(`9! = 362880` at `N = 9`), so these are genuine negative results, not
+witnesses.  Measured cost when added: ~173 s for the two theorems
+together (cached afterwards). -/
+
+/-- **Certificate (native_decide): the five `N = 8` counterexamples.**
+Each state fits, lies OUTSIDE the lower-bound region, satisfies the
+formula side, and admits NO different-cycle completion. -/
+theorem cex_outside_N8_l6 :
+    ∀ s ∈ [AdvState.mk 0 0 [1, 1, 1], .mk 0 0 [2, 2], .mk 0 0 [3, 1],
+           .mk 1 0 [2, 1], .mk 2 0 [1, 1]],
+      s.Fits 8 ∧ ¬ InLowerRegion 8 6 s ∧ FormulaSide 8 6 s ∧
+        ¬ CompletionSide 8 6 s := by
+  native_decide
+
+/-- **Certificate (native_decide): the two `N = 9` counterexamples.** -/
+theorem cex_outside_N9_l6 :
+    ∀ s ∈ [AdvState.mk 0 0 [2, 2], .mk 0 1 [1, 1, 1]],
+      s.Fits 9 ∧ ¬ InLowerRegion 9 6 s ∧ FormulaSide 9 6 s ∧
+        ¬ CompletionSide 9 6 s := by
+  native_decide
 
 /-! ## Agreement inside the lower-bound region (spot certificates)
 

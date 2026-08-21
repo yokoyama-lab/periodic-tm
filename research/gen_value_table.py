@@ -3,6 +3,14 @@
 
 各セルで厳密ソルバの値と閉形式 min(l-2, k1*) を並記し一致を検査。
 コストの高いセル（>TIME_CAP 秒）はスキップして closed-form のみ記載。
+
+使い方:
+    python3 gen_value_table.py              # 測定して CSV を書き直す
+    python3 gen_value_table.py --no-write   # 測定して照合するだけ（CSV は不変）
+
+--no-write は夜間の事後検証用。負荷が高いと TIME_CAP を超えたセルが
+t/o に落ち、値は変わらないのに status 欄だけが書き換わってしまうため、
+検査目的で回すときは CSV を触らせない。
 """
 import csv, sys, time
 from pathlib import Path
@@ -29,6 +37,7 @@ def closed_form(N, l):
 
 
 def main():
+    no_write = "--no-write" in sys.argv[1:]
     rows = []
     for l in (2, 3, 4, 5, 6):
         for N in range(l, 13):
@@ -44,14 +53,18 @@ def main():
             rows.append([N, l, pred, v, dt, status])
             if status == "MISMATCH":
                 print(f"MISMATCH at N={N} l={l}: solver={v} formula={pred}")
-    OUT.parent.mkdir(exist_ok=True)
-    with open(OUT, "w", newline="") as fh:
-        w = csv.writer(fh)
-        w.writerow(["N", "ell", "closed_form", "solver_value",
-                    "solver_seconds", "status"])
-        w.writerows(rows)
+    if no_write:
+        verb = f"checked {OUT.name} (not written)"
+    else:
+        OUT.parent.mkdir(exist_ok=True)
+        with open(OUT, "w", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["N", "ell", "closed_form", "solver_value",
+                        "solver_seconds", "status"])
+            w.writerows(rows)
+        verb = f"wrote {OUT.name}"
     bad = [r for r in rows if r[5] == "MISMATCH"]
-    print(f"wrote {OUT.name}: {len(rows)} cells, "
+    print(f"{verb}: {len(rows)} cells, "
           f"{sum(1 for r in rows if r[5]=='ok')} verified, "
           f"{sum(1 for r in rows if r[5]=='predicted-only')} predicted-only, "
           f"{len(bad)} mismatches")

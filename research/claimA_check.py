@@ -10,6 +10,14 @@
 
 全状態（N ≤ 10, ℓ ∈ {3,4,5,6}, q ≤ ℓ-2 の新鮮応答状態の同型類）で
 両者の一致を検査する。
+
+使い方:
+    python3 claimA_check.py                  # 検査して要約だけ出す
+    python3 claimA_check.py --list-outside   # 領域外の不一致8件を列挙する
+
+--list-outside の 8 件は Lean 側でも全件 native_decide で検査してある
+（TwoPointClaimACert.lean の cex / cex_outside_N8_l6 / cex_outside_N9_l6）。
+片方を変えたらもう片方も更新すること。
 """
 import sys, time
 from pathlib import Path
@@ -76,6 +84,8 @@ def main():
     (B) 領域外：不一致を記録として出力する（既知: 式の(⇐)は迷いパスの
         アトミック性を無視しており、未開示点枯渇時に過大評価する）。
     """
+    list_outside = "--list-outside" in sys.argv[1:]
+    outside = []
     in_ok = in_bad = out_mis = checked = 0
     for l in (3, 4, 5, 6):
         for N in range(l + 1, 11):
@@ -99,6 +109,12 @@ def main():
                                       f"k1={k1} strays={strays} b={b} fm={fm}")
                         elif b != fm:
                             out_mis += 1
+                            outside.append((N, l, k0, k1, st, b, fm))
+    if list_outside:
+        print("-- outside-region known mismatches (formula != brute) --")
+        for (N, l, k0, k1, st, b, fm) in outside:
+            print(f"N={N} l={l} k0={k0} k1={k1} strays={st} "
+                  f"brute={b} formula={fm}")
     print(f"checked {checked} states: lower-bound region OK={in_ok} "
           f"BAD={in_bad}; outside-region known mismatches={out_mis}")
     assert in_bad == 0

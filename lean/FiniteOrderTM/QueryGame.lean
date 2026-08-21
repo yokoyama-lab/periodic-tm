@@ -31,10 +31,13 @@ TWO-LAYER CONVENTION (as in the rest of the development):
     - N=6 and N=7, n=4, ℓ=4:  no depth-1 tree wins, and a depth-2
       strategy exists (N=6)  ⇒  value = 2  (table: q(B) = 2).
 
-BUILD NOTE.  This file is deliberately NOT imported from the root
-`FiniteOrderTM.lean`: the `native_decide` certificates take nontrivial
-wall-clock time and would slow the default `lake build`.  Check it with
-`lake env lean FiniteOrderTM/QueryGame.lean` instead.
+BUILD NOTE (corrected 2026-08-21).  This note used to claim the file was
+NOT imported from the root `FiniteOrderTM.lean`.  That has been false
+since `TwoPointAdversary.lean` started importing it: the root reaches
+this module through `TwoPointLowerBound → TwoPointTransport →
+TwoPointConcrete → TwoPointAdversary`, so the `native_decide`
+certificates below DO run on every `lake build` (verified: the built
+`QueryGame.olean` is present after a plain `lake build`).
 -/
 import Mathlib
 
