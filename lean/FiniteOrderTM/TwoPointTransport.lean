@@ -3,7 +3,7 @@ FiniteOrderTM/TwoPointTransport.lean
 — 葉での付け替え τ の構成と、グループ順埋め込みから具体状態への輸送
   （research/17 の修正方針の完結）
 
-対局の終状態 `C : ConcState N` に対し、グループ順ラベル列
+対局の終状態 `C : PathState N` に対し、グループ順ラベル列
 （`AdvState.gpaths` の平坦化）を実際の頂点列 `C.used` へ写す置換 τ を
 `extendPerm` で作る。すると
 * `AdvState.edges`（グループ順の開示辺）は τ で `C.edges` にちょうど写り
@@ -80,9 +80,9 @@ theorem edges_eq_zip (s : AdvState) :
 /-! ### グループ順ラベル列の性質 -/
 
 /-- パスの長さは具体側と一致する。 -/
-theorem gpaths_lengths [NeZero N] (C : ConcState N) :
+theorem gpaths_lengths [NeZero N] (C : PathState N) :
     C.toAdv.gpaths.map List.length = C.paths.map List.length := by
-  simp only [AdvState.gpaths, ConcState.paths, List.map_cons,
+  simp only [AdvState.gpaths, PathState.paths, List.map_cons,
     List.length_cons, List.length_range']
   refine congrArg₂ _ ?_ (congrArg₂ _ ?_ ?_)
   · rfl
@@ -211,7 +211,7 @@ theorem zip_tail_map {α β : Type*} (φ : α → β) (l : List α) :
 /-- **葉の付け替えの存在**: 不変量を満たす具体状態に対し、
 グループ順ラベルを実頂点へ写し、指定点 0・1 を固定し、さらに
 未開示ラベル `ext₁` を未使用点 `ext₂` へ写す置換 τ が存在する。 -/
-theorem exists_leaf_transport [NeZero N] (C : ConcState N) (hInv : C.Inv)
+theorem exists_leaf_transport [NeZero N] (C : PathState N) (hInv : C.Inv)
     (hN : 2 ≤ N) (ext₁ : List ℕ) (ext₂ : List (Fin N))
     (hext₁lt : ∀ u ∈ ext₁, u < N)
     (hext₁fresh : ∀ u ∈ ext₁, u ∉ C.toAdv.gpaths.flatten)
@@ -231,7 +231,7 @@ theorem exists_leaf_transport [NeZero N] (C : ConcState N) (hInv : C.Inv)
   -- 対応リスト
   set Lg := C.toAdv.gpaths.flatten with hLg
   have hLglen : Lg.length = C.used.length := by
-    rw [hLg, ConcState.used, List.length_flatten, List.length_flatten,
+    rw [hLg, PathState.used, List.length_flatten, List.length_flatten,
       gpaths_lengths C]
   have hlt : ∀ x ∈ Lg ++ ext₁, x < N := by
     intro x hx
@@ -259,7 +259,7 @@ theorem exists_leaf_transport [NeZero N] (C : ConcState N) (hInv : C.Inv)
     flatten_map_segments _ C.toAdv.gpaths C.paths (gpaths_lengths C)
       hsplit.1
   have hheads := hseg
-  simp only [AdvState.gpaths, ConcState.paths, List.map_cons,
+  simp only [AdvState.gpaths, PathState.paths, List.map_cons,
     List.cons.injEq] at hheads
   refine ⟨τ, ?_, ?_, hseg, ?_⟩
   · -- τ 0 = 0
@@ -277,17 +277,17 @@ theorem exists_leaf_transport [NeZero N] (C : ConcState N) (hInv : C.Inv)
 /-! ### 完成の輸送 -/
 
 /-- 開示辺の輸送: 分節対応があれば、具体辺はグループ辺の像。 -/
-theorem conc_edges_map [NeZero N] (C : ConcState N) {φ : ℕ → Fin N}
+theorem conc_edges_map [NeZero N] (C : PathState N) {φ : ℕ → Fin N}
     (hseg : C.toAdv.gpaths.map (List.map φ) = C.paths) :
     C.edges = C.toAdv.edges.map (Prod.map φ φ) := by
-  rw [ConcState.edges, ← hseg, edges_eq_zip, List.map_flatten,
+  rw [PathState.edges, ← hseg, edges_eq_zip, List.map_flatten,
     List.map_map, List.map_map]
   refine congrArg List.flatten (List.map_congr_left fun l _ => ?_)
   exact zip_tail_map φ l
 
 /-- **完成の輸送**: `f₀` がグループ順埋め込みの完成なら、その共役
 `τ f₀ τ⁻¹` は約束を満たし、具体状態の開示辺をすべて拡張する。 -/
-theorem transport_completion [NeZero N] {ℓ : ℕ} (C : ConcState N)
+theorem transport_completion [NeZero N] {ℓ : ℕ} (C : PathState N)
     {τ : Perm (Fin N)} (hτ0 : τ 0 = 0)
     (hseg : C.toAdv.gpaths.map (List.map (⇑τ ∘ Fin.ofNat N)) = C.paths)
     {f₀ : Perm (Fin N)} (hcomp : IsCompletion N ℓ C.toAdv f₀) :

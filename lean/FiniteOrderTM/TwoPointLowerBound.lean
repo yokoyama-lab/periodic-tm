@@ -96,12 +96,12 @@ section Classify
 variable [NeZero N]
 
 /-- 使用点の粗い分類（τ に依らない）。 -/
-theorem mem_used_cases (C : ConcState N) (v : Fin N) :
+theorem mem_used_cases (C : PathState N) (v : Fin N) :
     v ∉ C.used ∨ v ∈ (0 : Fin N) :: C.p0 ∨ v ∈ (1 : Fin N) :: C.p1 ∨
       ∃ p ∈ C.strays, v ∈ p.1 :: p.2 := by
   by_cases h : v ∈ C.used
   · right
-    simp only [ConcState.used, ConcState.paths, List.flatten_cons,
+    simp only [PathState.used, PathState.paths, List.flatten_cons,
       List.mem_append] at h
     rcases h with h | h | h
     · exact Or.inl h
@@ -112,20 +112,20 @@ theorem mem_used_cases (C : ConcState N) (v : Fin N) :
   · exact Or.inl h
 
 /-- hseg の分節（0-パス・1-パス・ブロック）への分解。 -/
-theorem hseg_parts {C : ConcState N} {τ : Perm (Fin N)}
+theorem hseg_parts {C : PathState N} {τ : Perm (Fin N)}
     (hseg : C.toAdv.gpaths.map (List.map (⇑τ ∘ Fin.ofNat N)) = C.paths) :
     ((List.range' 2 C.toAdv.k0).map (⇑τ ∘ Fin.ofNat N) = C.p0) ∧
     ((List.range' (2 + C.toAdv.k0) C.toAdv.k1).map (⇑τ ∘ Fin.ofNat N)
       = C.p1) ∧
     (C.toAdv.blocks.map (List.map (⇑τ ∘ Fin.ofNat N))
       = C.strays.map fun p => p.1 :: p.2) := by
-  simp only [AdvState.gpaths, ConcState.paths, List.map_cons,
+  simp only [AdvState.gpaths, PathState.paths, List.map_cons,
     List.cons.injEq] at hseg
   exact ⟨hseg.1.2, hseg.2.1.2, hseg.2.2⟩
 
 /-- **0-側の位置**: `v ∈ 0 :: p0` なら、ある `α ≤ k₀` があって、
 どの完成の共役でも `v` は位置 `α`。 -/
-theorem posZ_of_mem {C : ConcState N} {τ : Perm (Fin N)}
+theorem posZ_of_mem {C : PathState N} {τ : Perm (Fin N)}
     (hseg : C.toAdv.gpaths.map (List.map (⇑τ ∘ Fin.ofNat N)) = C.paths)
     (hτ0 : τ 0 = 0) {v : Fin N} (hv : v ∈ (0 : Fin N) :: C.p0) :
     ∃ α, α ≤ C.toAdv.k0 ∧ ∀ {ℓ : ℕ} (f₀ : Perm (Fin N)),
@@ -146,7 +146,7 @@ theorem posZ_of_mem {C : ConcState N} {τ : Perm (Fin N)}
 
 /-- **1-側の位置**: `v ∈ 1 :: p1` なら、ある `a ≤ k₁` があって、
 距離 `d` を実現するどの完成の共役でも `v` は位置 `d + a`。 -/
-theorem posO_of_mem {C : ConcState N} {τ : Perm (Fin N)}
+theorem posO_of_mem {C : PathState N} {τ : Perm (Fin N)}
     (hseg : C.toAdv.gpaths.map (List.map (⇑τ ∘ Fin.ofNat N)) = C.paths)
     (hτ0 : τ 0 = 0) (hτ1 : τ 1 = 1) (hN2 : 2 ≤ N)
     {v : Fin N} (hv : v ∈ (1 : Fin N) :: C.p1) :
@@ -180,7 +180,7 @@ theorem posO_of_mem {C : ConcState N} {τ : Perm (Fin N)}
     rfl
 
 /-- **迷い点の分類**: 迷いパス上の点は、あるブロックのラベルの像。 -/
-theorem stray_of_mem {C : ConcState N} {τ : Perm (Fin N)}
+theorem stray_of_mem {C : PathState N} {τ : Perm (Fin N)}
     (hseg : C.toAdv.gpaths.map (List.map (⇑τ ∘ Fin.ofNat N)) = C.paths)
     {v : Fin N} (hv : ∃ p ∈ C.strays, v ∈ p.1 :: p.2) :
     ∃ b ∈ C.toAdv.blocks, ∃ x ∈ b, τ (Fin.ofNat N x) = v := by
@@ -277,7 +277,7 @@ theorem sameCycle_one_of_label {ℓ : ℕ} {s : AdvState} {f₀ : Perm (Fin N)}
     omega
 
 /-- 0-側の会員は共役完成で `0` と同一軌道（conc 側）。 -/
-theorem sc_zero_of_mem {C : ConcState N} {τ : Perm (Fin N)}
+theorem sc_zero_of_mem {C : PathState N} {τ : Perm (Fin N)}
     (hseg : C.toAdv.gpaths.map (List.map (⇑τ ∘ Fin.ofNat N)) = C.paths)
     (hτ0 : τ 0 = 0) {v : Fin N} (hv : v ∈ (0 : Fin N) :: C.p0)
     {ℓ : ℕ} (f₀ : Perm (Fin N)) (hc : IsCompletion N ℓ C.toAdv f₀) :
@@ -291,7 +291,7 @@ theorem sc_zero_of_mem {C : ConcState N} {τ : Perm (Fin N)}
       (List.mem_cons.mpr (Or.inr hx)))
 
 /-- 1-側の会員は共役完成で `1` と同一軌道（conc 側）。 -/
-theorem sc_one_of_mem {C : ConcState N} {τ : Perm (Fin N)}
+theorem sc_one_of_mem {C : PathState N} {τ : Perm (Fin N)}
     (hseg : C.toAdv.gpaths.map (List.map (⇑τ ∘ Fin.ofNat N)) = C.paths)
     (hτ1 : τ 1 = 1) (hN2 : 2 ≤ N) {v : Fin N}
     (hv : v ∈ (1 : Fin N) :: C.p1)
@@ -329,16 +329,16 @@ theorem two_point_lower_bound {ℓ q : ℕ} (hℓ : 3 ≤ ℓ)
   obtain ⟨m, hmℓ, hmq, hmdvd, hmN⟩ := hnk
   have hN2 : 2 ≤ N := by omega
   -- 対局
-  obtain ⟨hInv, hlen⟩ := playC_inv t (ConcState.init N) (init_inv hN2)
+  obtain ⟨hInv, hlen⟩ := playC_inv t (PathState.init N) (init_inv hN2)
     (by rw [init_used_length]; omega)
   rw [init_used_length] at hlen
-  set C : ConcState N := playC t (ConcState.init N) with hC
+  set C : PathState N := playC t (PathState.init N) with hC
   set s := C.toAdv with hs
   have hsq : s.q ≤ q := by
-    have h := playC_toAdv_q t (ConcState.init N)
+    have h := playC_toAdv_q t (PathState.init N)
     rw [← hC] at h
     rw [hs]
-    have h0 : (ConcState.init N).toAdv.q = 0 := rfl
+    have h0 : (PathState.init N).toAdv.q = 0 := rfl
     omega
   have hfit : s.Fits N := by
     constructor
@@ -362,8 +362,8 @@ theorem two_point_lower_bound {ℓ q : ℕ} (hℓ : 3 ≤ ℓ)
   obtain ⟨D⟩ := exists_sameCycleData s hfit hreg hℓ
   obtain ⟨E⟩ := exists_diffCycleData s hfit hreg hℓ
   -- 葉の出力
-  set v₀ := (playLeafC t (ConcState.init N)).1 with hv₀
-  set v₁ := (playLeafC t (ConcState.init N)).2 with hv₁
+  set v₀ := (playLeafC t (PathState.init N)).1 with hv₀
+  set v₁ := (playLeafC t (PathState.init N)).2 with hv₁
   -- 撃墜スキーム: ext つきの τ と、任意の完成の共役の良い出力
   have master : ∀ (ext₁ : List ℕ) (ext₂ : List (Fin N)),
       (∀ u ∈ ext₁, s.vertexCount ≤ u) → (∀ u ∈ ext₁, u < N) →
@@ -386,9 +386,9 @@ theorem two_point_lower_bound {ℓ q : ℕ} (hℓ : 3 ≤ ℓ)
       hnd₁ hfr hnd₂ hlen'
     refine ⟨τ, hτ0, hτ1, hseg, hext, fun f₀ hc => ?_⟩
     obtain ⟨hval, hedges⟩ := transport_completion C hτ0 hseg hc
-    have hagree := agreesC_of_extends (τ * f₀ * τ⁻¹) t (ConcState.init N)
+    have hagree := agreesC_of_extends (τ * f₀ * τ⁻¹) t (PathState.init N)
       (by rw [← hC]; exact hedges)
-    have hgood := (runsC_iff_goodOutput 0 1 _ t (ConcState.init N)
+    have hgood := (runsC_iff_goodOutput 0 1 _ t (PathState.init N)
       hagree).mp (hwin _ hval)
     exact ⟨hval.2, hgood⟩
   -- 分類して撃墜する

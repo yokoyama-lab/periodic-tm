@@ -7,10 +7,10 @@ FiniteOrderTM/TwoPointConcrete.lean
 使った具体的な点」を避ける必要があり、抽象状態 `AdvState` からは
 計算できない（迷いパスの開始点は**アルゴリズム側が選ぶ**ので、
 使用済み集合は抽象状態に写らない）。そこで本ファイルは、実際の
-頂点リストを持つ具体状態 `ConcState` の上で対局を定義する。
+頂点リストを持つ具体状態 `PathState` の上で対局を定義する。
 
 構成:
-* `ConcState` — 0-パス・1-パス・迷いパスの具体頂点リスト。
+* `PathState` — 0-パス・1-パス・迷いパスの具体頂点リスト。
   `paths`（パスのリスト）、`used`（開示頂点、グループ順に整列）、
   `edges`（開示辺 = 各パスの隣接対 `zip l l.tail`）、抽象化 `toAdv`。
 * 敵対者の応答 `answer`（記録済みの後続があればそれ、なければ未使用点）
@@ -169,7 +169,7 @@ end ZipTail
 
 /-- 新鮮応答敵対者の具体状態: 0-パスの新頂点列 `p0`、1-パスの `p1`、
 迷いパスの列（開始点と後続頂点列）。 -/
-structure ConcState (N : ℕ) where
+structure PathState (N : ℕ) where
   p0 : List (Fin N)
   p1 : List (Fin N)
   strays : List (Fin N × List (Fin N))
@@ -219,78 +219,78 @@ theorem strayEndScan_none {x : Fin N} :
       · exact ht
       · exact ih (by simpa using h) s hs'
 
-namespace ConcState
+namespace PathState
 
 /-- 抽象化: 辺数だけを数える。 -/
-def toAdv (C : ConcState N) : AdvState :=
+def toAdv (C : PathState N) : AdvState :=
   ⟨C.p0.length, C.p1.length, C.strays.map fun s => s.2.length⟩
 
 /-- `x` を末端に持つ迷いパスの番号（あれば）。 -/
-def strayEndIdx (C : ConcState N) (x : Fin N) : Option ℕ :=
+def strayEndIdx (C : PathState N) (x : Fin N) : Option ℕ :=
   strayEndScan x C.strays
 
 /-- 初期状態（何も開示されていない）。 -/
-def init (N : ℕ) : ConcState N := ⟨[], [], []⟩
+def init (N : ℕ) : PathState N := ⟨[], [], []⟩
 
 variable [NeZero N]
 
 /-- 開示済みパスの一覧（0-パス・1-パス・迷いパスの順）。 -/
-def paths (C : ConcState N) : List (List (Fin N)) :=
+def paths (C : PathState N) : List (List (Fin N)) :=
   ((0 : Fin N) :: C.p0) :: ((1 : Fin N) :: C.p1) ::
     (C.strays.map fun s => s.1 :: s.2)
 
 /-- 開示済み頂点（グループ順: 0-パス、1-パス、迷いパス）。 -/
-def used (C : ConcState N) : List (Fin N) := C.paths.flatten
+def used (C : PathState N) : List (Fin N) := C.paths.flatten
 
 /-- 開示済み辺: 各パスの隣接対。 -/
-def edges (C : ConcState N) : List (Fin N × Fin N) :=
+def edges (C : PathState N) : List (Fin N × Fin N) :=
   (C.paths.map fun l => l.zip l.tail).flatten
 
 /-- 不変量: 開示頂点はすべて相異なり、迷いパスは空でない。 -/
-def Inv (C : ConcState N) : Prop :=
+def Inv (C : PathState N) : Prop :=
   C.used.Nodup ∧ ∀ s ∈ C.strays, s.2 ≠ []
 
 /-- 0-パスの末端。 -/
-def end0 (C : ConcState N) : Fin N :=
+def end0 (C : PathState N) : Fin N :=
   ((0 : Fin N) :: C.p0).getLast (List.cons_ne_nil _ _)
 
 /-- 1-パスの末端。 -/
-def end1 (C : ConcState N) : Fin N :=
+def end1 (C : PathState N) : Fin N :=
   ((1 : Fin N) :: C.p1).getLast (List.cons_ne_nil _ _)
 
 /-- 未使用の点（クエリ点 `x` も避ける）。存在しなければダミー 0。 -/
-def freshPt (C : ConcState N) (x : Fin N) : Fin N :=
+def freshPt (C : PathState N) (x : Fin N) : Fin N :=
   if h : (Finset.univ \ insert x C.used.toFinset).Nonempty
   then (Finset.univ \ insert x C.used.toFinset).min' h
   else 0
 
 /-- 敵対者の答え: 記録済みの後続があればそれ、なければ未使用点。 -/
-def answer (C : ConcState N) (x : Fin N) : Fin N :=
+def answer (C : PathState N) (x : Fin N) : Fin N :=
   match C.edges.find? (fun p => p.1 == x) with
   | some p => p.2
   | none => C.freshPt x
 
 /-- 0-パスを 1 点延長する。 -/
-def extend0 (C : ConcState N) (y : Fin N) : ConcState N :=
+def extend0 (C : PathState N) (y : Fin N) : PathState N :=
   ⟨C.p0 ++ [y], C.p1, C.strays⟩
 
 /-- 1-パスを 1 点延長する。 -/
-def extend1 (C : ConcState N) (y : Fin N) : ConcState N :=
+def extend1 (C : PathState N) (y : Fin N) : PathState N :=
   ⟨C.p0, C.p1 ++ [y], C.strays⟩
 
 /-- 迷いパス `i` を 1 点延長する（範囲外なら何もしない）。 -/
-def extendStray (C : ConcState N) (i : ℕ) (y : Fin N) : ConcState N :=
+def extendStray (C : PathState N) (i : ℕ) (y : Fin N) : PathState N :=
   ⟨C.p0, C.p1,
     match C.strays[i]? with
     | some s => C.strays.set i (s.1, s.2 ++ [y])
     | none => C.strays⟩
 
 /-- 新しい迷いパス `x → y` を作る。 -/
-def newStray (C : ConcState N) (x y : Fin N) : ConcState N :=
+def newStray (C : PathState N) (x y : Fin N) : PathState N :=
   ⟨C.p0, C.p1, (x, [y]) :: C.strays⟩
 
 /-- 1 手の状態遷移。 -/
-def step (C : ConcState N) (x : Fin N) : ConcState N :=
+def step (C : PathState N) (x : Fin N) : PathState N :=
   if x = C.end0 then C.extend0 (C.answer x)
   else if x = C.end1 then C.extend1 (C.answer x)
   else
@@ -301,7 +301,7 @@ def step (C : ConcState N) (x : Fin N) : ConcState N :=
         else C.newStray x (C.answer x)
 
 /-- 1 手のクエリ種別（`AdvState.step` との可換性のため）。 -/
-def kind (C : ConcState N) (x : Fin N) : QueryKind :=
+def kind (C : PathState N) (x : Fin N) : QueryKind :=
   if x = C.end0 then .extendP0
   else if x = C.end1 then .extendP1
   else
@@ -310,7 +310,7 @@ def kind (C : ConcState N) (x : Fin N) : QueryKind :=
     | none =>
         if (C.edges.find? (fun p => p.1 == x)).isSome then .stale else .fresh
 
-end ConcState
+end PathState
 
 /-! ### 分岐の集約（`step`・`kind` の場合分けを 1 回で済ませる） -/
 
@@ -319,14 +319,14 @@ section StepCases
 variable [NeZero N]
 
 /-- `strayEndIdx = some i` の仕様: `i` 番の迷いパスの末端が `x`。 -/
-theorem strayEndIdx_spec (C : ConcState N) {x : Fin N} {i : ℕ}
+theorem strayEndIdx_spec (C : PathState N) {x : Fin N} {i : ℕ}
     (h : C.strayEndIdx x = some i) :
     ∃ hi : i < C.strays.length,
       (C.strays[i].1 :: C.strays[i].2).getLast (List.cons_ne_nil _ _) = x :=
   strayEndScan_spec h
 
 /-- `strayEndIdx = none` の仕様: どの迷いパスの末端も `x` でない。 -/
-theorem strayEndIdx_none (C : ConcState N) {x : Fin N}
+theorem strayEndIdx_none (C : PathState N) {x : Fin N}
     (h : C.strayEndIdx x = none) :
     ∀ s ∈ C.strays,
       (s.1 :: s.2).getLast (List.cons_ne_nil _ _) ≠ x :=
@@ -334,7 +334,7 @@ theorem strayEndIdx_none (C : ConcState N) {x : Fin N}
 
 /-- **分岐の場合分け**: `step`・`kind` の値は 5 通りのどれか。
 以後の証明はすべてこの補題で分岐し、`if`/`match` には触れない。 -/
-theorem step_eq (C : ConcState N) (x : Fin N) :
+theorem step_eq (C : PathState N) (x : Fin N) :
     (x = C.end0 ∧ C.kind x = .extendP0 ∧
       C.step x = C.extend0 (C.answer x)) ∨
     (x ≠ C.end0 ∧ x = C.end1 ∧ C.kind x = .extendP1 ∧
@@ -349,24 +349,24 @@ theorem step_eq (C : ConcState N) (x : Fin N) :
       C.step x = C.newStray x (C.answer x)) := by
   by_cases h0 : x = C.end0
   · refine Or.inl ⟨h0, ?_, ?_⟩ <;>
-      simp only [ConcState.kind, ConcState.step, if_pos h0]
+      simp only [PathState.kind, PathState.step, if_pos h0]
   · by_cases h1 : x = C.end1
     · refine Or.inr (Or.inl ⟨h0, h1, ?_, ?_⟩) <;>
-        simp only [ConcState.kind, ConcState.step, if_neg h0, if_pos h1]
+        simp only [PathState.kind, PathState.step, if_neg h0, if_pos h1]
     · cases hidx : C.strayEndIdx x with
       | some i =>
         refine Or.inr (Or.inr (Or.inl ⟨i, h0, h1, rfl, ?_, ?_⟩)) <;>
-          simp only [ConcState.kind, ConcState.step, if_neg h0, if_neg h1,
+          simp only [PathState.kind, PathState.step, if_neg h0, if_neg h1,
             hidx]
       | none =>
         by_cases hst : (C.edges.find? (fun p => p.1 == x)).isSome
         · refine Or.inr (Or.inr (Or.inr (Or.inl ⟨h0, h1, rfl, hst, ?_, ?_⟩)))
-            <;> simp only [ConcState.kind, ConcState.step, if_neg h0,
+            <;> simp only [PathState.kind, PathState.step, if_neg h0,
               if_neg h1, hidx, if_pos hst]
         · have hst' : C.edges.find? (fun p => p.1 == x) = none :=
             Option.not_isSome_iff_eq_none.mp hst
           refine Or.inr (Or.inr (Or.inr (Or.inr ⟨h0, h1, rfl, hst', ?_, ?_⟩)))
-            <;> simp only [ConcState.kind, ConcState.step, if_neg h0,
+            <;> simp only [PathState.kind, PathState.step, if_neg h0,
               if_neg h1, hidx, if_neg hst]
 
 end StepCases
@@ -377,41 +377,41 @@ section PathShapes
 
 variable [NeZero N]
 
-theorem paths_length (C : ConcState N) :
+theorem paths_length (C : PathState N) :
     C.paths.length = C.strays.length + 2 := by
-  simp [ConcState.paths]
+  simp [PathState.paths]
 
-theorem extend0_paths (C : ConcState N) (y : Fin N) :
+theorem extend0_paths (C : PathState N) (y : Fin N) :
     (C.extend0 y).paths
       = C.paths.set 0 (C.paths[0]'(by simp [paths_length]) ++ [y]) := by
-  simp [ConcState.extend0, ConcState.paths, List.cons_append]
+  simp [PathState.extend0, PathState.paths, List.cons_append]
 
-theorem extend1_paths (C : ConcState N) (y : Fin N) :
+theorem extend1_paths (C : PathState N) (y : Fin N) :
     (C.extend1 y).paths
       = C.paths.set 1 (C.paths[1]'(by simp [paths_length]) ++ [y]) := by
-  simp [ConcState.extend1, ConcState.paths, List.cons_append]
+  simp [PathState.extend1, PathState.paths, List.cons_append]
 
-theorem extendStray_paths (C : ConcState N) (i : ℕ) (y : Fin N)
+theorem extendStray_paths (C : PathState N) (i : ℕ) (y : Fin N)
     (hi : i < C.strays.length) :
     (C.extendStray i y).paths
       = C.paths.set (i + 2)
           (C.paths[i + 2]'(by simp [paths_length]; omega) ++ [y]) := by
-  unfold ConcState.extendStray
+  unfold PathState.extendStray
   rw [List.getElem?_eq_getElem hi]
-  simp only [ConcState.paths, List.set_cons_succ, List.getElem_cons_succ,
+  simp only [PathState.paths, List.set_cons_succ, List.getElem_cons_succ,
     map_set, List.getElem_map, List.cons_append]
 
-theorem newStray_paths (C : ConcState N) (x y : Fin N) :
+theorem newStray_paths (C : PathState N) (x y : Fin N) :
     (C.newStray x y).paths
       = ((0 : Fin N) :: C.p0) :: ((1 : Fin N) :: C.p1) ::
           ((x :: [y]) :: (C.strays.map fun s => s.1 :: s.2)) := by
-  simp [ConcState.newStray, ConcState.paths]
+  simp [PathState.newStray, PathState.paths]
 
 /-- 分節の隣接対は辺集合の要素。 -/
-theorem edges_mem_of_seg (C : ConcState N) {l : List (Fin N)}
+theorem edges_mem_of_seg (C : PathState N) {l : List (Fin N)}
     (hl : l ∈ C.paths) {p : Fin N × Fin N} (hp : p ∈ l.zip l.tail) :
     p ∈ C.edges := by
-  simp only [ConcState.edges, List.mem_flatten, List.mem_map]
+  simp only [PathState.edges, List.mem_flatten, List.mem_map]
   exact ⟨_, ⟨l, hl, rfl⟩, hp⟩
 
 end PathShapes
@@ -433,42 +433,42 @@ theorem sum_map_cons_length {α : Type*} (l : List (α × List α)) :
     omega
 
 /-- 開示頂点数 = 抽象状態の `vertexCount`。 -/
-theorem used_length (C : ConcState N) :
+theorem used_length (C : PathState N) :
     C.used.length = C.toAdv.vertexCount := by
-  rw [ConcState.used, List.length_flatten]
-  simp only [ConcState.paths, List.map_cons, List.sum_cons, List.length_cons,
+  rw [PathState.used, List.length_flatten]
+  simp only [PathState.paths, List.map_cons, List.sum_cons, List.length_cons,
     List.map_map]
   have h : (C.strays.map (List.length ∘ fun s => s.1 :: s.2)).sum
       = C.strays.length + (C.strays.map fun s => s.2.length).sum := by
     have := sum_map_cons_length C.strays
     simpa [Function.comp_def] using this
   rw [h]
-  simp only [ConcState.toAdv, AdvState.vertexCount, List.length_map]
+  simp only [PathState.toAdv, AdvState.vertexCount, List.length_map]
   omega
 
 /-- **抽象化は遷移と可換**: 具体で 1 手進めた状態の抽象化は、
 抽象状態を対応する種別で 1 手進めたもの。 -/
-theorem toAdv_step (C : ConcState N) (x : Fin N) :
+theorem toAdv_step (C : PathState N) (x : Fin N) :
     (C.step x).toAdv = C.toAdv.step (C.kind x) := by
   rcases step_eq C x with ⟨_, hk, hs⟩ | ⟨_, _, hk, hs⟩ |
     ⟨i, _, _, hidx, hk, hs⟩ | ⟨_, _, _, _, hk, hs⟩ | ⟨_, _, _, _, hk, hs⟩
   · rw [hk, hs]
-    simp [ConcState.extend0, ConcState.toAdv, AdvState.step]
+    simp [PathState.extend0, PathState.toAdv, AdvState.step]
   · rw [hk, hs]
-    simp [ConcState.extend1, ConcState.toAdv, AdvState.step]
+    simp [PathState.extend1, PathState.toAdv, AdvState.step]
   · rw [hk, hs]
     obtain ⟨hi, -⟩ := strayEndIdx_spec C hidx
-    unfold ConcState.extendStray
+    unfold PathState.extendStray
     rw [List.getElem?_eq_getElem hi]
-    simp only [ConcState.toAdv, AdvState.step, AdvState.mk.injEq, true_and]
+    simp only [PathState.toAdv, AdvState.step, AdvState.mk.injEq, true_and]
     rw [map_set]
     congr 1
     rw [List.getElem?_map, List.getElem?_eq_getElem hi]
     simp
   · rw [hk, hs]
-    simp [ConcState.toAdv, AdvState.step]
+    simp [PathState.toAdv, AdvState.step]
   · rw [hk, hs]
-    simp [ConcState.newStray, ConcState.toAdv, AdvState.step]
+    simp [PathState.newStray, PathState.toAdv, AdvState.step]
 
 end Abstraction
 
@@ -479,7 +479,7 @@ section Answer
 variable [NeZero N]
 
 /-- `find?` が見つけた対は辺集合の要素で、始点は `x`。 -/
-theorem find?_edge {C : ConcState N} {x : Fin N} {p : Fin N × Fin N}
+theorem find?_edge {C : PathState N} {x : Fin N} {p : Fin N × Fin N}
     (h : C.edges.find? (fun p => p.1 == x) = some p) :
     p ∈ C.edges ∧ p.1 = x := by
   refine ⟨List.mem_of_find?_eq_some h, ?_⟩
@@ -487,19 +487,19 @@ theorem find?_edge {C : ConcState N} {x : Fin N} {p : Fin N × Fin N}
   simpa using this
 
 /-- 記録済みの後続がある場合、答えの辺はすでに辺集合にある。 -/
-theorem answer_edge_of_stale {C : ConcState N} {x : Fin N}
+theorem answer_edge_of_stale {C : PathState N} {x : Fin N}
     (h : (C.edges.find? (fun p => p.1 == x)).isSome) :
     (x, C.answer x) ∈ C.edges := by
   obtain ⟨p, hp⟩ := Option.isSome_iff_exists.mp h
   obtain ⟨hmem, hfst⟩ := find?_edge hp
   have hans : C.answer x = p.2 := by
-    unfold ConcState.answer
+    unfold PathState.answer
     rw [hp]
   rw [hans, ← hfst]
   exact hmem
 
 /-- **各パスは遷移で延長されるだけ**（接尾辞の付加）。 -/
-theorem step_paths_extend (C : ConcState N) (x : Fin N) :
+theorem step_paths_extend (C : PathState N) (x : Fin N) :
     ∀ l ∈ C.paths, ∃ m, l ++ m ∈ (C.step x).paths := by
   intro l hl
   rcases step_eq C x with ⟨_, _, hs⟩ | ⟨_, _, _, hs⟩ |
@@ -523,15 +523,15 @@ theorem step_paths_extend (C : ConcState N) (x : Fin N) :
           (List.mem_cons.mpr (Or.inr hl'')))))
 
 /-- **辺集合は遷移で単調**。 -/
-theorem edges_mono_step (C : ConcState N) (x : Fin N) {p : Fin N × Fin N}
+theorem edges_mono_step (C : PathState N) (x : Fin N) {p : Fin N × Fin N}
     (hp : p ∈ C.edges) : p ∈ (C.step x).edges := by
-  simp only [ConcState.edges, List.mem_flatten, List.mem_map] at hp
+  simp only [PathState.edges, List.mem_flatten, List.mem_map] at hp
   obtain ⟨_, ⟨l, hl, rfl⟩, hpl⟩ := hp
   obtain ⟨m, hm⟩ := step_paths_extend C x l hl
   exact edges_mem_of_seg _ hm (mem_zip_tail_append hpl)
 
 /-- **答えの辺は遷移後の辺集合にある**（不変量は不要）。 -/
-theorem answer_edge_mem (C : ConcState N) (x : Fin N) :
+theorem answer_edge_mem (C : PathState N) (x : Fin N) :
     (x, C.answer x) ∈ (C.step x).edges := by
   rcases step_eq C x with ⟨h0, _, hs⟩ | ⟨_, h1, _, hs⟩ |
     ⟨i, _, _, hidx, _, hs⟩ | ⟨_, _, _, hst, _, hs⟩ | ⟨_, _, _, hst, _, hs⟩
@@ -539,13 +539,13 @@ theorem answer_edge_mem (C : ConcState N) (x : Fin N) :
     rw [hs]
     refine edges_mem_of_seg _ (l := ((0 : Fin N) :: C.p0) ++ [C.answer C.end0])
       ?_ ?_
-    · simp [ConcState.extend0, ConcState.paths, List.cons_append]
+    · simp [PathState.extend0, PathState.paths, List.cons_append]
     · exact getLast_mem_zip_append (List.cons_ne_nil _ _) _
   · subst h1
     rw [hs]
     refine edges_mem_of_seg _ (l := ((1 : Fin N) :: C.p1) ++ [C.answer C.end1])
       ?_ ?_
-    · simp [ConcState.extend1, ConcState.paths, List.cons_append]
+    · simp [PathState.extend1, PathState.paths, List.cons_append]
     · exact getLast_mem_zip_append (List.cons_ne_nil _ _) _
   · obtain ⟨hi, hlast⟩ := strayEndIdx_spec C hidx
     rw [hs]
@@ -564,7 +564,7 @@ theorem answer_edge_mem (C : ConcState N) (x : Fin N) :
         rw [List.getElem_set_self]
         congr 1
         show C.paths[i + 2]'_ = _
-        simp [ConcState.paths]
+        simp [PathState.paths]
       exact hval ▸ List.getElem_mem _
     · rw [← hlast]
       exact getLast_mem_zip_append (List.cons_ne_nil _ _) _
@@ -586,7 +586,7 @@ section Invariant
 variable [NeZero N]
 
 /-- 未使用点の仕様: 余白があれば、`freshPt` は使用済みでも `x` でもない。 -/
-theorem freshPt_spec (C : ConcState N) (x : Fin N)
+theorem freshPt_spec (C : PathState N) (x : Fin N)
     (h : C.used.length + 2 ≤ N) :
     C.freshPt x ∉ C.used ∧ C.freshPt x ≠ x := by
   have hcard : (insert x C.used.toFinset).card < N := by
@@ -604,29 +604,29 @@ theorem freshPt_spec (C : ConcState N) (x : Fin N)
     omega
   have hmem := Finset.min'_mem _ hne
   rw [Finset.mem_sdiff, Finset.mem_insert, not_or] at hmem
-  unfold ConcState.freshPt
+  unfold PathState.freshPt
   rw [dif_pos hne]
   exact ⟨fun hmem' => hmem.2.2 (List.mem_toFinset.mpr hmem'), hmem.2.1⟩
 
 /-- パスは互いに素（`Inv` から）: 異なる（値の）パスは点を共有しない。 -/
-theorem paths_disjoint (C : ConcState N) (hInv : C.Inv) :
+theorem paths_disjoint (C : PathState N) (hInv : C.Inv) :
     ∀ l ∈ C.paths, ∀ l' ∈ C.paths, l ≠ l' → List.Disjoint l l' := by
   have hnd := (List.nodup_flatten.mp hInv.1).2
   intro l hl l' hl' hne
   exact hnd.forall (fun _ _ h => h.symm) hl hl' hne
 
 /-- 各パスは Nodup（`Inv` から）。 -/
-theorem paths_nodup (C : ConcState N) (hInv : C.Inv) :
+theorem paths_nodup (C : PathState N) (hInv : C.Inv) :
     ∀ l ∈ C.paths, l.Nodup :=
   (List.nodup_flatten.mp hInv.1).1
 
 /-- **末端は辺の始点にならない**: `Inv` のもとで、どのパスの末端からも
 記録済みの辺は出ていない。 -/
-theorem not_source_of_getLast (C : ConcState N) (hInv : C.Inv)
+theorem not_source_of_getLast (C : PathState N) (hInv : C.Inv)
     {l : List (Fin N)} (hl : l ∈ C.paths) (hne : l ≠ []) :
     ∀ z, (l.getLast hne, z) ∉ C.edges := by
   intro z hmem
-  simp only [ConcState.edges, List.mem_flatten, List.mem_map] at hmem
+  simp only [PathState.edges, List.mem_flatten, List.mem_map] at hmem
   obtain ⟨_, ⟨l', hl', rfl⟩, hzip⟩ := hmem
   by_cases heq : l = l'
   · subst heq
@@ -636,7 +636,7 @@ theorem not_source_of_getLast (C : ConcState N) (hInv : C.Inv)
 
 /-- 0-パスの末端が使われているパスは 0-パスに限る（`Inv` 下の帰結として、
 末端クエリでは記録済みの後続はない）。 -/
-theorem find?_eq_none_of_end (C : ConcState N) (hInv : C.Inv) {x : Fin N}
+theorem find?_eq_none_of_end (C : PathState N) (hInv : C.Inv) {x : Fin N}
     (h : x = C.end0 ∨ x = C.end1 ∨ ∃ i, C.strayEndIdx x = some i) :
     C.edges.find? (fun p => p.1 == x) = none := by
   rw [List.find?_eq_none]
@@ -660,13 +660,13 @@ theorem find?_eq_none_of_end (C : ConcState N) (hInv : C.Inv) {x : Fin N}
     exact this hp
 
 /-- 新鮮クエリの点は未使用（`Inv` 下）。 -/
-theorem not_used_of_fresh (C : ConcState N) (hInv : C.Inv) {x : Fin N}
+theorem not_used_of_fresh (C : PathState N) (hInv : C.Inv) {x : Fin N}
     (h0 : x ≠ C.end0) (h1 : x ≠ C.end1)
     (hidx : C.strayEndIdx x = none)
     (hst : C.edges.find? (fun p => p.1 == x) = none) :
     x ∉ C.used := by
   intro hx
-  simp only [ConcState.used, List.mem_flatten] at hx
+  simp only [PathState.used, List.mem_flatten] at hx
   obtain ⟨l, hl, hxl⟩ := hx
   have hlne : l ≠ [] := by
     rintro rfl
@@ -685,16 +685,16 @@ theorem not_used_of_fresh (C : ConcState N) (hInv : C.Inv) {x : Fin N}
     exact hst _ hmem (by simp)
 
 /-- 末端クエリの答えは未使用点。 -/
-theorem answer_eq_fresh_of_end (C : ConcState N) (hInv : C.Inv) {x : Fin N}
+theorem answer_eq_fresh_of_end (C : PathState N) (hInv : C.Inv) {x : Fin N}
     (h : x = C.end0 ∨ x = C.end1 ∨ ∃ i, C.strayEndIdx x = some i) :
     C.answer x = C.freshPt x := by
-  unfold ConcState.answer
+  unfold PathState.answer
   rw [find?_eq_none_of_end C hInv h]
 
 /-- **1 手の使用リストの変化**: 並べ替えの意味で「未使用点 1 つ追加」
 （延長）か「クエリ点と未使用点を追加」（新迷い）か「変化なし」
 （既知の答え）のいずれか。 -/
-theorem used_step_perm (C : ConcState N) (x : Fin N) (hInv : C.Inv) :
+theorem used_step_perm (C : PathState N) (x : Fin N) (hInv : C.Inv) :
     (C.step x).used.Perm (C.freshPt x :: C.used) ∨
     ((C.step x).used.Perm (C.freshPt x :: x :: C.used) ∧ x ∉ C.used) ∨
     (C.step x).used = C.used := by
@@ -702,22 +702,22 @@ theorem used_step_perm (C : ConcState N) (x : Fin N) (hInv : C.Inv) :
     ⟨i, h0, h1, hidx, _, hs⟩ | ⟨_, _, _, _, _, hs⟩ | ⟨h0, h1, hidx, hst, _, hs⟩
   · left
     rw [hs, answer_eq_fresh_of_end C hInv (Or.inl h0)]
-    rw [ConcState.used, extend0_paths]
+    rw [PathState.used, extend0_paths]
     exact flatten_set_perm C.paths 0 _ (by simp [paths_length])
   · left
     rw [hs, answer_eq_fresh_of_end C hInv (Or.inr (Or.inl h1))]
-    rw [ConcState.used, extend1_paths]
+    rw [PathState.used, extend1_paths]
     exact flatten_set_perm C.paths 1 _ (by simp [paths_length])
   · left
     obtain ⟨hi, -⟩ := strayEndIdx_spec C hidx
     rw [hs, answer_eq_fresh_of_end C hInv (Or.inr (Or.inr ⟨i, hidx⟩))]
-    rw [ConcState.used, extendStray_paths C i _ hi]
+    rw [PathState.used, extendStray_paths C i _ hi]
     exact flatten_set_perm C.paths (i + 2) _ (by simp [paths_length]; omega)
   · right; right
     rw [hs]
   · right; left
     have hans : C.answer x = C.freshPt x := by
-      unfold ConcState.answer
+      unfold PathState.answer
       rw [hst]
     refine ⟨?_, not_used_of_fresh C hInv h0 h1 hidx hst⟩
     rw [hs, hans]
@@ -760,7 +760,7 @@ theorem used_step_perm (C : ConcState N) (x : Fin N) (hInv : C.Inv) :
     exact hstep3.trans ((hstep4.cons _))
 
 /-- 迷いパスの非空性は保たれる。 -/
-theorem strays_ne_nil_step (C : ConcState N) (x : Fin N)
+theorem strays_ne_nil_step (C : PathState N) (x : Fin N)
     (h : ∀ s ∈ C.strays, s.2 ≠ []) :
     ∀ s ∈ (C.step x).strays, s.2 ≠ [] := by
   rcases step_eq C x with ⟨_, _, hs⟩ | ⟨_, _, _, hs⟩ |
@@ -768,7 +768,7 @@ theorem strays_ne_nil_step (C : ConcState N) (x : Fin N)
   · rw [hs]; exact h
   · rw [hs]; exact h
   · rw [hs]
-    unfold ConcState.extendStray
+    unfold PathState.extendStray
     cases hopt : C.strays[i]? with
     | some s0 =>
       intro s hs'
@@ -786,7 +786,7 @@ theorem strays_ne_nil_step (C : ConcState N) (x : Fin N)
 
 /-- **不変量の維持**: 余白があれば 1 手で `Inv` は保たれ、
 使用リストは高々 2 伸びる。 -/
-theorem inv_step (C : ConcState N) (x : Fin N) (hInv : C.Inv)
+theorem inv_step (C : PathState N) (x : Fin N) (hInv : C.Inv)
     (hroom : C.used.length + 2 ≤ N) :
     (C.step x).Inv ∧ (C.step x).used.length ≤ C.used.length + 2 := by
   obtain ⟨hfresh, hfx⟩ := freshPt_spec C x hroom
@@ -820,25 +820,25 @@ section Play
 variable [NeZero N]
 
 /-- 木を最後まで辿ったときの終状態。 -/
-def playC : {q : ℕ} → Tree N q → ConcState N → ConcState N
+def playC : {q : ℕ} → Tree N q → PathState N → PathState N
   | _, .leaf _ _, C => C
   | _, .node x child, C => playC (child (C.answer x)) (C.step x)
 
 /-- 対局が辿り着く葉の出力対。 -/
-def playLeafC : {q : ℕ} → Tree N q → ConcState N → Fin N × Fin N
+def playLeafC : {q : ℕ} → Tree N q → PathState N → Fin N × Fin N
   | _, .leaf v₀ v₁, _ => (v₀, v₁)
   | _, .node x child, C => playLeafC (child (C.answer x)) (C.step x)
 
 /-- 完成 `f` が対局の答えと各手で一致する。 -/
 def AgreesC (f : Perm (Fin N)) :
-    {q : ℕ} → Tree N q → ConcState N → Prop
+    {q : ℕ} → Tree N q → PathState N → Prop
   | _, .leaf _ _, _ => True
   | _, .node x child, C =>
       f x = C.answer x ∧ AgreesC f (child (C.answer x)) (C.step x)
 
 /-- 辺集合は対局を通して単調。 -/
 theorem playC_edges_mono :
-    ∀ {q : ℕ} (t : Tree N q) (C : ConcState N) {p : Fin N × Fin N},
+    ∀ {q : ℕ} (t : Tree N q) (C : PathState N) {p : Fin N × Fin N},
       p ∈ C.edges → p ∈ (playC t C).edges
   | _, .leaf _ _, _, _, hp => hp
   | _, .node x child, C, _, hp =>
@@ -848,7 +848,7 @@ theorem playC_edges_mono :
 /-- **一致の十分条件**: 完成が終状態の開示辺をすべて拡張するなら、
 対局と各手で一致する。不変量は不要（辺は常に記録されるから）。 -/
 theorem agreesC_of_extends (f : Perm (Fin N)) :
-    ∀ {q : ℕ} (t : Tree N q) (C : ConcState N),
+    ∀ {q : ℕ} (t : Tree N q) (C : PathState N),
       (∀ p ∈ (playC t C).edges, f p.1 = p.2) → AgreesC f t C
   | _, .leaf _ _, _, _ => trivial
   | _, .node x child, C, hext => by
@@ -860,7 +860,7 @@ theorem agreesC_of_extends (f : Perm (Fin N)) :
 
 /-- **一致すれば同じ葉に着く**（`runs_iff_goodOutput_playLeaf` の具体版）。 -/
 theorem runsC_iff_goodOutput (a b : Fin N) (f : Perm (Fin N)) :
-    ∀ {q : ℕ} (t : Tree N q) (C : ConcState N), AgreesC f t C →
+    ∀ {q : ℕ} (t : Tree N q) (C : PathState N), AgreesC f t C →
       (Runs a b t f ↔ GoodOutput a b f (playLeafC t C).1 (playLeafC t C).2)
   | _, .leaf v₀ v₁, C, _ => Iff.rfl
   | _, .node x child, C, h => by
@@ -871,7 +871,7 @@ theorem runsC_iff_goodOutput (a b : Fin N) (f : Perm (Fin N)) :
 
 /-- **木が勝てないことの十分条件**(具体版)。 -/
 theorem not_winsAt_of_bad_leafC {n ℓ : ℕ} (a b : Fin N) {q : ℕ}
-    (t : Tree N q) (C : ConcState N) (f : Perm (Fin N))
+    (t : Tree N q) (C : PathState N) (f : Perm (Fin N))
     (hvalid : Valid n ℓ a f) (hagree : AgreesC f t C)
     (hbad : ¬ GoodOutput a b f (playLeafC t C).1 (playLeafC t C).2) :
     ¬ WinsAt n ℓ a b t := by
@@ -880,7 +880,7 @@ theorem not_winsAt_of_bad_leafC {n ℓ : ℕ} (a b : Fin N) {q : ℕ}
 
 /-- 抽象化された終状態の予算勘定: 深さ `q` の木で `q` は高々 `q` 増える。 -/
 theorem playC_toAdv_q :
-    ∀ {q : ℕ} (t : Tree N q) (C : ConcState N),
+    ∀ {q : ℕ} (t : Tree N q) (C : PathState N),
       (playC t C).toAdv.q ≤ C.toAdv.q + q
   | _, .leaf _ _, _ => Nat.le_refl _
   | _, .node x child, C => by
@@ -894,7 +894,7 @@ theorem playC_toAdv_q :
 /-- **対局の主不変量**: 余白 `used + 2q ≤ N` のもとで `Inv` は最後まで
 保たれ、使用リストは高々 `2q` 伸びる。 -/
 theorem playC_inv :
-    ∀ {q : ℕ} (t : Tree N q) (C : ConcState N), C.Inv →
+    ∀ {q : ℕ} (t : Tree N q) (C : PathState N), C.Inv →
       C.used.length + 2 * q ≤ N →
       (playC t C).Inv ∧ (playC t C).used.length ≤ C.used.length + 2 * q
   | _, .leaf _ _, _, hInv, _ => ⟨hInv, by simp only [playC]; omega⟩
@@ -906,7 +906,7 @@ theorem playC_inv :
     exact ⟨hInvF, by omega⟩
 
 /-- 初期状態は不変量を満たす（`N ≥ 2`）。 -/
-theorem init_inv (hN : 2 ≤ N) : (ConcState.init N).Inv := by
+theorem init_inv (hN : 2 ≤ N) : (PathState.init N).Inv := by
   constructor
   · have hnd : ([0, 1].map (Fin.ofNat N)).Nodup := by
       refine ofNat_injOn ?_ (by simp)
@@ -918,15 +918,15 @@ theorem init_inv (hN : 2 ≤ N) : (ConcState.init N).Inv := by
         · simp at hx''
     simp only [List.map_cons, List.map_nil, ofNat_zero_eq_zero,
       ofNat_one_eq_one hN] at hnd
-    simpa [ConcState.init, ConcState.used, ConcState.paths] using hnd
-  · simp [ConcState.init]
+    simpa [PathState.init, PathState.used, PathState.paths] using hnd
+  · simp [PathState.init]
 
 /-- 初期状態の使用リストの長さは 2。 -/
-theorem init_used_length : (ConcState.init N).used.length = 2 := by
-  simp [ConcState.init, ConcState.used, ConcState.paths]
+theorem init_used_length : (PathState.init N).used.length = 2 := by
+  simp [PathState.init, PathState.used, PathState.paths]
 
 /-- 初期状態の抽象化は空状態。 -/
-theorem init_toAdv : (ConcState.init N).toAdv = ⟨0, 0, []⟩ := rfl
+theorem init_toAdv : (PathState.init N).toAdv = ⟨0, 0, []⟩ := rfl
 
 end Play
 
