@@ -422,16 +422,23 @@ noncomputable def gameValue (N ℓ : ℕ) [NeZero N] : ℕ :=
   sInf {q : ℕ | ∃ t : Tree N q, WinsAt ℓ ℓ (0 : Fin N) 1 t}
 
 /-- **定理 9.6**: `value(N, ℓ) = min(ℓ − 2, k₁*(N, ℓ))`。
-上界（最小性の上からの評価）と下界（それ未満では勝てない）の合成。 -/
-theorem gameValue_eq {ℓ : ℕ} (hN : 2 ≤ N) (hℓ : 3 ≤ ℓ) :
+上界（最小性の上からの評価）と下界（それ未満では勝てない）の合成。
+
+`ℓ = 2` も込み（research/09 の「ℓ = 2 は 0」）。そこでは `ℓ − 2 = 0` で
+min が 0 になり、下界は `q < 0` が空なので使わない。 -/
+theorem gameValue_eq {ℓ : ℕ} (hN : 2 ≤ N) (hℓ : 2 ≤ ℓ) :
     gameValue N ℓ = min (ℓ - 2) (PeriodicTM.TwoPointCore.k1Star N ℓ) := by
   have hmem : min (ℓ - 2) (PeriodicTM.TwoPointCore.k1Star N ℓ) ∈
       {q : ℕ | ∃ t : Tree N q, WinsAt ℓ ℓ (0 : Fin N) 1 t} :=
-    two_point_upper_bound hN (by omega)
+    two_point_upper_bound hN hℓ
   refine le_antisymm (Nat.sInf_le hmem) ?_
-  by_contra hcon
-  exact PeriodicTM.ClaimA.two_point_lower_bound hℓ (not_le.mp hcon)
-    (Nat.sInf_mem ⟨_, hmem⟩)
+  rcases Nat.lt_or_ge ℓ 3 with h2 | h3
+  · have hz : ℓ - 2 = 0 := by omega
+    rw [hz]
+    simp
+  · by_contra hcon
+    exact PeriodicTM.ClaimA.two_point_lower_bound h3 (not_le.mp hcon)
+      (Nat.sInf_mem ⟨_, hmem⟩)
 
 end Main
 
@@ -484,11 +491,25 @@ theorem closed_form_matches_measured :
     ∀ c ∈ measuredCells, min (c.2.1 - 2) (k1Star c.1 c.2.1) = c.2.2 :=
   fun c hc => min_k1Star_eq_of_cellOK (measuredCells_ok c hc)
 
+/-- 具体セルの値を 1 行で出すための形。 -/
+theorem gameValue_eq_of_cellOK [NeZero N] {ℓ v : ℕ} (hN : 2 ≤ N) (hℓ : 2 ≤ ℓ)
+    (h : CellOK N ℓ v) : gameValue N ℓ = v :=
+  (gameValue_eq hN hℓ).trans (min_k1Star_eq_of_cellOK h)
+
 /-- 測定表と `QueryGame.lean` の `native_decide` 証明書の噛み合わせ:
-N=5, ℓ=3 では値 1、N=6, ℓ=4 と N=7, ℓ=4 では値 2。 -/
-example : min (3 - 2) (k1Star 5 3) = 1 := min_k1Star_eq_of_cellOK (by decide)
-example : min (4 - 2) (k1Star 6 4) = 2 := min_k1Star_eq_of_cellOK (by decide)
-example : min (4 - 2) (k1Star 7 4) = 2 := min_k1Star_eq_of_cellOK (by decide)
+N=5, ℓ=3 では値 1、N=6, ℓ=4 と N=7, ℓ=4 では値 2。
+（`QueryGame.lean` は同じ値を独立に `native_decide` で出している。） -/
+example : gameValue 5 3 = 1 := gameValue_eq_of_cellOK (by norm_num) (by norm_num) (by decide)
+example : gameValue 6 4 = 2 := gameValue_eq_of_cellOK (by norm_num) (by norm_num) (by decide)
+example : gameValue 7 4 = 2 := gameValue_eq_of_cellOK (by norm_num) (by norm_num) (by decide)
+
+/-- **定理が測定を追い越した 3 セル**。`research/data/query_game_values.csv`
+で `predicted-only`（厳密ソルバが 90 秒の上限内に終わらず未測定）だった
+N=12, ℓ=4/5/6 の値が、定理から確定する。ソルバの探索空間は 12! = 4.8 億
+置換の部分集合なので、ここは機械証明のほうが強い。 -/
+example : gameValue 12 4 = 2 := gameValue_eq_of_cellOK (by norm_num) (by norm_num) (by decide)
+example : gameValue 12 5 = 3 := gameValue_eq_of_cellOK (by norm_num) (by norm_num) (by decide)
+example : gameValue 12 6 = 4 := gameValue_eq_of_cellOK (by norm_num) (by norm_num) (by decide)
 
 end Table
 
