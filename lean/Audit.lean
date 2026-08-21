@@ -97,3 +97,26 @@ import FiniteOrderTM
 #print axioms PeriodicTM.range_idempotent_eq_fixpoints
 #print axioms PeriodicTM.computablePred_fix_of_computable
 #print axioms PeriodicTM.preperiod_two_nogo
+
+-- Theorem 9.6: the exact value of the two-point consistency game
+-- (research/09).  All clean: standard mathlib axioms, no `native_decide`.
+-- `two_point_value` = lower bound (no depth-`q` tree wins for
+-- `q < min (ℓ−2, k₁*)`) + upper bound (a depth-`min (ℓ−2, k₁*)` tree wins).
+#print axioms PeriodicTM.Reflect.goodOutput_one_zero
+#print axioms PeriodicTM.Reflect.goodOutput_cross
+#print axioms PeriodicTM.Upper.goodOutput_pin
+#print axioms PeriodicTM.Upper.walkZero_wins
+#print axioms PeriodicTM.Upper.walkOne_wins
+#print axioms PeriodicTM.ClaimA.two_point_lower_bound
+#print axioms PeriodicTM.Upper.two_point_upper_bound
+#print axioms PeriodicTM.Upper.two_point_value
+-- Regression check tying the Lean definition of `k₁*` to the exact-solver
+-- table of `research/data/query_game_values.csv` (42 measured cells).
+#print axioms PeriodicTM.Upper.closed_form_matches_measured
+
+-- Layer-2 ONLY (bounded certification by compiled evaluation).  These
+-- deliberately carry a `native_decide` axiom and must NOT be read as
+-- clean: they are the mutation-injection probes showing the depth-2
+-- winning trees of Theorem 9.6 lose when their leaf outputs are swapped.
+#print axioms PeriodicTM.Upper.badPin_loses
+#print axioms PeriodicTM.Upper.badKill_loses

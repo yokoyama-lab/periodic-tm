@@ -18,8 +18,10 @@ FiniteOrderTM/TwoPointReflect.lean
 を得る。これらが上界の 2 つの勝ち筋（別軌道殺し・d ピン留め）の
 葉の証明の土台になる。
 
-**BUILD NOTE**: root（`FiniteOrderTM.lean`）非取込。検査は
-`lake env lean FiniteOrderTM/TwoPointReflect.lean`。
+**BUILD NOTE**（2026-08-21 訂正）: 作られた 08-10 から 11 晩、root
+（`FiniteOrderTM.lean`）から取り込まれておらず `lake build` の対象外
+だった。現在は root が直接 import している（`TwoPointUpper.lean` も
+この土台を使う）。
 -/
 import FiniteOrderTM.QueryGame
 import FiniteOrderTM.LocallyFinite

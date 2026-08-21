@@ -4,9 +4,11 @@ FiniteOrderTM/TwoPointClaimACert.lean
 Bounded certificates (`native_decide`) for Claim A of Lemma 9.7
 (`FiniteOrderTM/TwoPointClaimA.lean`), matching research/claimA_check.py.
 
-BUILD NOTE.  Like `QueryGame.lean`, this file is deliberately NOT
-imported from the root `FiniteOrderTM.lean` (native_decide build cost);
-check it with `lake env lean FiniteOrderTM/TwoPointClaimACert.lean`.
+BUILD NOTE (corrected 2026-08-21).  This file used to be excluded from
+the root `FiniteOrderTM.lean` for build cost, which meant these
+certificates never ran in the nightly `lake build` — an unrun check is
+indistinguishable from "no problem found".  It is now imported from the
+root; the measured one-off cost is 472 s (cached afterwards).
 
 Layer convention: every theorem here is Layer-2 bounded certification
 (compiled evaluation); the definitions being evaluated are the

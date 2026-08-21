@@ -31,3 +31,13 @@ import FiniteOrderTM.TwoPointClaimA
 -- 「lake build 緑」が two_point_lower_bound について何も言わない状態になる
 -- （2026-08-10 に是正。それまでは `lake env lean` の一回限りの検査で、olean も CI も残っていなかった）。
 import FiniteOrderTM.TwoPointLowerBound
+-- 定理9.6 の上界の部品（軌道保存反射の存在）。2026-08-10 に作られたが root から
+-- 取り込まれておらず、11 晩ずっと `lake build` の対象外だった（2026-08-21 に是正）。
+import FiniteOrderTM.TwoPointReflect
+-- 定理9.6 の上界の本体と、上界＋下界を合わせた値の公式。
+import FiniteOrderTM.TwoPointUpper
+-- 検査は走らせないと「異常なし」と区別がつかないので、native_decide の
+-- 証明書ファイルも root から取り込む（実測の追加コストはキャッシュが無い
+-- 場合の一度きり: Cert=138s, ClaimACert=472s。2026-08-21）。
+import FiniteOrderTM.TwoPointUpperCert
+import FiniteOrderTM.TwoPointClaimACert

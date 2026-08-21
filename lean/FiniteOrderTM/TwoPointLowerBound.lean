@@ -19,8 +19,9 @@ research/18 の場合分け表の実装。部品:
 * 残り（v₀ ∈ {Z, 迷いA, U} × v₁ ∈ {O', U}）→ 2 距離撃墜と資源
   （軌道外ラベル u ／共通尾部 w ／別軌道の配置自由度）
 
-**BUILD NOTE**: root（`FiniteOrderTM.lean`）非取込。検査は
-`lake env lean FiniteOrderTM/TwoPointLowerBound.lean`。
+**BUILD NOTE**（2026-08-21 訂正）: 8bacb1d 以降 root
+（`FiniteOrderTM.lean`）から取り込まれており、`lake build` の対象。
+この注記の「非取込」は古い。
 -/
 import FiniteOrderTM.TwoPointTransport
 import FiniteOrderTM.TwoPointSameCycle
