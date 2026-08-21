@@ -41,3 +41,7 @@ import FiniteOrderTM.TwoPointUpper
 -- 場合の一度きり: Cert=138s, ClaimACert=472s。2026-08-21）。
 import FiniteOrderTM.TwoPointUpperCert
 import FiniteOrderTM.TwoPointClaimACert
+-- 定理9.6 のオラクル約束が非空になる範囲 (`0 < ℓ ≤ N`) の確定。上下界の
+-- 議論が実質を持つ場所を切り分ける。root import 漏れは前例があるので
+-- 最初から入れておく。
+import FiniteOrderTM.TwoPointNonvacuous
