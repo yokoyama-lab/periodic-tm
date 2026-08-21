@@ -1,7 +1,10 @@
 /-
 Axiom audit for the FiniteOrderTM development.
 
-Run:  lake env lean Audit.lean
+Run:  plain `lake build` (this module is a default target, see
+`lakefile.toml`), or `lake env lean Audit.lean` for the output alone.
+It is a build target on purpose: from 2026-07-23 to 2026-08-21 this file
+was orphaned and broken, and no gate noticed.
 
 Expected output: every theorem reports a subset of
   [propext, Classical.choice, Quot.sound]
@@ -51,9 +54,6 @@ import FiniteOrderTM
 #print axioms PeriodicTM.liftL_halt_iff
 #print axioms PeriodicTM.liftL_demand_iff
 #print axioms PeriodicTM.nakano_symmetrisation
--- #2: 2k-tape semantic completeness (KInvolutory → partial involution)
-#print axioms PeriodicTM.nakano_completeness_semantic
-
 -- I/O convention (M6c): tape-geometry lemmas and string-level bridge
 -- readTape_left_irrelevant, readTape_mk₁, readTape_length: clean (Quot.sound)
 -- stringSem_involutive: clean; depends on Involutory.tapeSem_involutive
@@ -64,31 +64,20 @@ import FiniteOrderTM
 #print axioms PeriodicTM.writeHead_stdOutput
 #print axioms PeriodicTM.stringSem_writeHead_involutive
 
--- Section 7: reversibilisation (semantic) + full-string/multi-tape conjugation
--- (all clean; the FULLY unconditional goals bennett_reversibilization /
---  nakano_symmetrisation_unconditional / bennett_unconditional_target remain
---  documented `sorry`s and are deliberately not audited here)
-#print axioms PeriodicTM.phaseF2_semInverse
-#print axioms PeriodicTM.phaseF2_forward_correct
-#print axioms PeriodicTM.bennettB_semInverse
-#print axioms PeriodicTM.nakano_symmetrisation_unconditional_partial
-#print axioms PeriodicTM.nakano_symmetrisation_headvalued
-#print axioms PeriodicTM.bennettBStr_semInverse_blockdata
-#print axioms PeriodicTM.bennettBStrK_semInverse_blockdata
-#print axioms PeriodicTM.nakano_symmetrisation_strvalued
-#print axioms PeriodicTM.nakano_symmetrisation_strvalued_K
-#print axioms PeriodicTM.cellwiseM0_strvalued
-#print axioms PeriodicTM.cellwiseM0_strvalued_K
-#print axioms PeriodicTM.bennettBStrD_isPartialInvolutionOn
-#print axioms PeriodicTM.bennettBStrKD_isPartialInvolutionOn
--- EXT-2 (2a): arbitrary finite data re-encodes to a block over Option Γ
-#print axioms PeriodicTM.encodeStr_isBlock
--- EXT-2 (2c): arbitrary finite data is symmetrisable after re-encoding
-#print axioms PeriodicTM.encodeStr_cellwise_symmetrisable
--- #1: the conditional symmetrisation target (the "unconditional wall" as a theorem)
-#print axioms PeriodicTM.bennett_symmetrisation_conditional
-#print axioms PeriodicTM.bennett_symmetrisation_conditional_K
-#print axioms PeriodicTM.isPartialInvolutionOn_of_isPartialInvolution
+-- Section 7 (reversibilisation) and EXT-2 (block re-encoding): 19
+-- `#print axioms` lines used to sit here, naming declarations of the WIP
+-- modules `Bennett*.lean` / `BlockEncode.lean` / `Completeness2k.lean` /
+-- `Reversibilization.lean` / `Unconditional.lean`.  Those modules were
+-- deleted in c1ec136 ("`sorry` を含む WIP Lean モジュールを除去",
+-- 2026-07-23), about 20 minutes after this file was written, and the
+-- lines were never updated — so this whole audit script has been
+-- un-runnable ever since (19 "unknown constant" errors).  Nothing ran
+-- it, so nobody noticed.  Removed 2026-08-21 together with wiring the
+-- file into `lake build` (see `lakefile.toml`, target `Audit`).
+-- The surviving successor results live in `SemReversible.lean` and
+-- `InvolutoryBennett.lean`; re-adding entries for them is a separate
+-- job for a human who knows which ones are the intended headline
+-- theorems.
 
 -- Pre-period-2 no-go (A2/A3): all clean, no sorry
 -- range_idempotent_eq_fixpoints: clean (propext, Quot.sound)
@@ -110,6 +99,8 @@ import FiniteOrderTM
 #print axioms PeriodicTM.ClaimA.two_point_lower_bound
 #print axioms PeriodicTM.Upper.two_point_upper_bound
 #print axioms PeriodicTM.Upper.two_point_value
+-- `gameValue N ℓ = min (ℓ − 2) (k₁* N ℓ)` — the value formula itself.
+#print axioms PeriodicTM.Upper.gameValue_eq
 -- Regression check tying the Lean definition of `k₁*` to the exact-solver
 -- table of `research/data/query_game_values.csv` (42 measured cells).
 #print axioms PeriodicTM.Upper.closed_form_matches_measured

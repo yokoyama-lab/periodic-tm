@@ -415,6 +415,24 @@ theorem two_point_value {ℓ : ℕ} (hN : 2 ≤ N) (hℓ : 3 ≤ ℓ) :
   ⟨fun _ hq => PeriodicTM.ClaimA.two_point_lower_bound hℓ hq,
     two_point_upper_bound hN (by omega)⟩
 
+/-- 2 点整合ゲームの**値**: 勝利する適応的決定木が存在する最小の深さ。
+（`Nat.sInf` なので、勝てる深さが無いときは `0` になる。実際には上界が
+常に存在するので `gameValue_eq` の下でその角は起きない。） -/
+noncomputable def gameValue (N ℓ : ℕ) [NeZero N] : ℕ :=
+  sInf {q : ℕ | ∃ t : Tree N q, WinsAt ℓ ℓ (0 : Fin N) 1 t}
+
+/-- **定理 9.6**: `value(N, ℓ) = min(ℓ − 2, k₁*(N, ℓ))`。
+上界（最小性の上からの評価）と下界（それ未満では勝てない）の合成。 -/
+theorem gameValue_eq {ℓ : ℕ} (hN : 2 ≤ N) (hℓ : 3 ≤ ℓ) :
+    gameValue N ℓ = min (ℓ - 2) (PeriodicTM.TwoPointCore.k1Star N ℓ) := by
+  have hmem : min (ℓ - 2) (PeriodicTM.TwoPointCore.k1Star N ℓ) ∈
+      {q : ℕ | ∃ t : Tree N q, WinsAt ℓ ℓ (0 : Fin N) 1 t} :=
+    two_point_upper_bound hN (by omega)
+  refine le_antisymm (Nat.sInf_le hmem) ?_
+  by_contra hcon
+  exact PeriodicTM.ClaimA.two_point_lower_bound hℓ (not_le.mp hcon)
+    (Nat.sInf_mem ⟨_, hmem⟩)
+
 end Main
 
 /-! ### 測定表との突き合わせ
@@ -480,3 +498,4 @@ end PeriodicTM.Upper
 #print axioms PeriodicTM.Upper.walkOne_wins
 #print axioms PeriodicTM.Upper.two_point_upper_bound
 #print axioms PeriodicTM.Upper.two_point_value
+#print axioms PeriodicTM.Upper.gameValue_eq
