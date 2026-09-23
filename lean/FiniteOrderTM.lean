@@ -26,3 +26,8 @@ import FiniteOrderTM.HistoryMachine
 import FiniteOrderTM.InvolutoryAssembly
 import FiniteOrderTM.NoGo
 import FiniteOrderTM.TwoPointCore
+import FiniteOrderTM.PermTwoInvolutions
+import FiniteOrderTM.HalfShift
+import FiniteOrderTM.KernelDecomp
+import FiniteOrderTM.Doubling
+import FiniteOrderTM.CenterExtraction
