@@ -1,0 +1,82 @@
+name: Lean CI
+
+# Builds the Lean 4 / mathlib development in `lean/` and runs the axiom
+# audits (see lean/README.md):
+#   cd lean && lake exe cache get && lake build   (done by lean-action)
+#   lake env lean Audit.lean                      (main library audit)
+#   lake build FiniteOrderTM.QueryGame && lake env lean AuditQueryGame.lean
+#                                                 (native_decide certificates)
+# Toolchain: lean/lean-toolchain (leanprover/lean4:v4.30.0); mathlib v4.30.0
+# oleans come from `lake exe cache get`.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lean-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: lake exe cache get + lake build (lean/)
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: lean
+          use-mathlib-cache: true
+          test: false
+
+      - name: No sorry in the Lean sources
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          if grep -rnE '\bsorry\b' --include='*.lean' FiniteOrderTM FiniteOrderTM.lean \
+               | grep -vE '`sorry`|^\S+:[0-9]+:\s*(--|/-|\*|\|)' ; then
+            echo "::error::found sorry in the Lean sources"
+            exit 1
+          fi
+          echo "OK: no sorry"
+
+      - name: Axiom audit (lake env lean Audit.lean)
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          lake env lean Audit.lean | tee "$RUNNER_TEMP/audit.out"
+          n=$(grep -c 'depends on axioms' "$RUNNER_TEMP/audit.out")
+          echo "audited declarations: $n"
+          test "$n" -gt 0
+          extra=$(grep -oE 'depends on axioms: \[[^]]*\]' "$RUNNER_TEMP/audit.out" \
+                  | sed -E 's/.*\[(.*)\]/\1/' | tr ',' '\n' | sed 's/^ *//' | grep -v '^$' \
+                  | grep -vxE 'propext|Classical\.choice|Quot\.sound' || true)
+          if grep -q 'sorryAx' "$RUNNER_TEMP/audit.out" || [ -n "$extra" ]; then
+            echo "::error::non-standard axioms used: ${extra:-sorryAx}"
+            exit 1
+          fi
+          echo "OK: only propext / Classical.choice / Quot.sound"
+
+      - name: QueryGame certificates (native_decide; Lean.ofReduceBool allowed)
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          lake build FiniteOrderTM.QueryGame
+          lake env lean AuditQueryGame.lean | tee "$RUNNER_TEMP/auditqg.out"
+          n=$(grep -c 'depends on axioms' "$RUNNER_TEMP/auditqg.out")
+          echo "audited declarations: $n"
+          test "$n" -eq 8
+          extra=$(grep -oE 'depends on axioms: \[[^]]*\]' "$RUNNER_TEMP/auditqg.out" \
+                  | sed -E 's/.*\[(.*)\]/\1/' | tr ',' '\n' | sed 's/^ *//' | grep -v '^$' \
+                  | grep -vxE 'propext|Classical\.choice|Quot\.sound|Lean\.ofReduceBool' || true)
+          if grep -q 'sorryAx' "$RUNNER_TEMP/auditqg.out" || [ -n "$extra" ]; then
+            echo "::error::unexpected axioms used: ${extra:-sorryAx}"
+            exit 1
+          fi
+          echo "OK: standard axioms plus Lean.ofReduceBool (native_decide) only"
