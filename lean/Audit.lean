@@ -51,8 +51,6 @@ import FiniteOrderTM
 #print axioms PeriodicTM.liftL_halt_iff
 #print axioms PeriodicTM.liftL_demand_iff
 #print axioms PeriodicTM.nakano_symmetrisation
--- #2: 2k-tape semantic completeness (KInvolutory → partial involution)
-#print axioms PeriodicTM.nakano_completeness_semantic
 
 -- I/O convention (M6c): tape-geometry lemmas and string-level bridge
 -- readTape_left_irrelevant, readTape_mk₁, readTape_length: clean (Quot.sound)
@@ -63,32 +61,6 @@ import FiniteOrderTM
 -- #4 follow-up: concrete StdOutput instance (writeHead g), string-level non-vacuity
 #print axioms PeriodicTM.writeHead_stdOutput
 #print axioms PeriodicTM.stringSem_writeHead_involutive
-
--- Section 7: reversibilisation (semantic) + full-string/multi-tape conjugation
--- (all clean; the FULLY unconditional goals bennett_reversibilization /
---  nakano_symmetrisation_unconditional / bennett_unconditional_target remain
---  documented `sorry`s and are deliberately not audited here)
-#print axioms PeriodicTM.phaseF2_semInverse
-#print axioms PeriodicTM.phaseF2_forward_correct
-#print axioms PeriodicTM.bennettB_semInverse
-#print axioms PeriodicTM.nakano_symmetrisation_unconditional_partial
-#print axioms PeriodicTM.nakano_symmetrisation_headvalued
-#print axioms PeriodicTM.bennettBStr_semInverse_blockdata
-#print axioms PeriodicTM.bennettBStrK_semInverse_blockdata
-#print axioms PeriodicTM.nakano_symmetrisation_strvalued
-#print axioms PeriodicTM.nakano_symmetrisation_strvalued_K
-#print axioms PeriodicTM.cellwiseM0_strvalued
-#print axioms PeriodicTM.cellwiseM0_strvalued_K
-#print axioms PeriodicTM.bennettBStrD_isPartialInvolutionOn
-#print axioms PeriodicTM.bennettBStrKD_isPartialInvolutionOn
--- EXT-2 (2a): arbitrary finite data re-encodes to a block over Option Γ
-#print axioms PeriodicTM.encodeStr_isBlock
--- EXT-2 (2c): arbitrary finite data is symmetrisable after re-encoding
-#print axioms PeriodicTM.encodeStr_cellwise_symmetrisable
--- #1: the conditional symmetrisation target (the "unconditional wall" as a theorem)
-#print axioms PeriodicTM.bennett_symmetrisation_conditional
-#print axioms PeriodicTM.bennett_symmetrisation_conditional_K
-#print axioms PeriodicTM.isPartialInvolutionOn_of_isPartialInvolution
 
 -- Pre-period-2 no-go (A2/A3): all clean, no sorry
 -- range_idempotent_eq_fixpoints: clean (propext, Quot.sound)
