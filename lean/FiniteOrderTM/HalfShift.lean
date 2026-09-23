@@ -50,14 +50,14 @@ def Reverses (f : Perm α) (g : α → α) : Prop := ∀ x, g (f x) = f⁻¹ (g 
 /-- `f` has no finite orbits: `f ^ k x = x` only for `k = 0`. -/
 def Free (f : Perm α) : Prop := ∀ (x : α) (k : ℤ), (f ^ k) x = x → k = 0
 
-namespace Reverser
+section ReversesLemmas
 
 variable {f : Perm α} {g : α → α}
 
 theorem Reverses.inv_apply (hg : Reverses f g) (x : α) : g (f⁻¹ x) = f (g x) := by
   have h := hg (f⁻¹ x)
-  rw [perm_apply_inv_self] at h
-  rw [h, perm_apply_inv_self]
+  rw [Reverser.perm_apply_inv_self] at h
+  rw [h, Reverser.perm_apply_inv_self]
 
 /-- A reverser turns every power into the inverse power:
 `g (f ^ k x) = f ^ (−k) (g x)`. -/
@@ -68,16 +68,22 @@ theorem Reverses.zpow (hg : Reverses f g) (k : ℤ) :
   | succ k ih =>
     intro x
     rw [zpow_add_one, Perm.mul_apply, ih, hg, ← Perm.mul_apply, ← zpow_sub_one]
-    exact zpow_apply_congr_exp (by ring) _
+    exact Reverser.zpow_apply_congr_exp (by ring) _
   | pred k ih =>
     intro x
     rw [zpow_sub_one, Perm.mul_apply, ih, hg.inv_apply, ← Perm.mul_apply, ← zpow_add_one]
-    exact zpow_apply_congr_exp (by ring) _
+    exact Reverser.zpow_apply_congr_exp (by ring) _
 
 /-- The inverse form: `f ^ k (g x) = g (f ^ (−k) x)`. -/
 theorem Reverses.zpow_apply (hg : Reverses f g) (k : ℤ) (x : α) :
     (f ^ k) (g x) = g ((f ^ (-k)) x) := by
   rw [hg.zpow, neg_neg]
+
+end ReversesLemmas
+
+namespace Reverser
+
+variable {f : Perm α} {g : α → α}
 
 variable (f g) in
 /-- A *shift datum* for a reverser `g`: `g² = f ^ t` pointwise, with `t`

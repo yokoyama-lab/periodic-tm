@@ -59,7 +59,7 @@ theorem exists_center (hι : Reverses f ι) {t : α} (hfix : f.SameCycle t (ι t
   obtain ⟨c, hc⟩ := hfix
   have key : ∀ k : ℤ, ι ((f ^ k) t) = (f ^ (c - k)) t := by
     intro k
-    rw [Reverser.Reverses.zpow hι, ← hc, ← Perm.mul_apply, ← zpow_add]
+    rw [Reverses.zpow hι, ← hc, ← Perm.mul_apply, ← zpow_add]
     exact Reverser.zpow_apply_congr_exp (by ring) _
   rcases Int.even_or_odd c with ⟨j, hj⟩ | ⟨j, hj⟩
   · refine ⟨(f ^ j) t, ⟨j, rfl⟩, Or.inl ?_⟩
@@ -72,7 +72,7 @@ theorem exists_center (hι : Reverses f ι) {t : α} (hfix : f.SameCycle t (ι t
 /-- A centre `f^a t` pins the exponent of `ι t = f^c t` to `c ∈ {2a, 2a+1}`. -/
 theorem exp_of_center (hι : Reverses f ι) {t : α} {a : ℤ} (ha : IsCenter f ι ((f ^ a) t)) :
     ∃ c : ℤ, ι t = (f ^ c) t ∧ (c = 2 * a ∨ c = 2 * a + 1) := by
-  have h := Reverser.Reverses.zpow hι a t
+  have h := Reverses.zpow hι a t
   rcases ha with ha | ha
   · refine ⟨2 * a, ?_, Or.inl rfl⟩
     have h2 := congrArg (f ^ a) (h.symm.trans ha)
