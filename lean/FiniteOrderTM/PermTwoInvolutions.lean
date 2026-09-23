@@ -106,7 +106,8 @@ variable (D : OrbitData f)
 
 theorem OrbitData.rep_inv_apply (x : α) : D.rep (f⁻¹ x) = D.rep x := by
   have h := D.rep_apply (f⁻¹ x)
-  rwa [perm_apply_inv_self] at h
+  rw [perm_apply_inv_self] at h
+  exact h.symm
 
 /-- `rep` is constant along the whole ℤ-orbit. -/
 theorem OrbitData.rep_zpow (k : ℤ) : ∀ x, D.rep ((f ^ k) x) = D.rep x := by
@@ -123,10 +124,11 @@ theorem OrbitData.rep_eq (x : α) : D.rep x = (f ^ (-D.pos x)) x := by
   have h := D.pos_spec x
   have h' := congrArg (f ^ (-D.pos x)) h
   rw [← Perm.mul_apply, ← zpow_add, neg_add_cancel, zpow_zero, Perm.one_apply] at h'
-  exact h'.symm
+  exact h'
 
 theorem OrbitData.rep_rep (x : α) : D.rep (D.rep x) = D.rep x := by
   rw [D.rep_eq x, D.rep_zpow]
+  exact D.rep_eq x
 
 /-! ### The two reflections -/
 

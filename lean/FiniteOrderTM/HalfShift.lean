@@ -98,7 +98,8 @@ variable (S : ShiftData f g)
 
 theorem ShiftData.t_inv_apply (x : α) : S.t (f⁻¹ x) = S.t x := by
   have h := S.t_apply (f⁻¹ x)
-  rwa [perm_apply_inv_self] at h
+  rw [perm_apply_inv_self] at h
+  exact h.symm
 
 theorem ShiftData.t_zpow (k : ℤ) : ∀ x, S.t ((f ^ k) x) = S.t x := by
   induction k with

@@ -123,7 +123,7 @@ theorem coreRot_iterate_of_mem {x : α} (hx : x ∈ core f m) :
   | zero => rfl
   | succ k ih =>
     rw [Function.iterate_succ_apply', ih, coreRot_of_mem (iterate_mem_core hx k),
-      ← Function.iterate_succ_apply']
+      ← Function.iterate_succ_apply' f k]
 
 /-- The core rotation has order dividing `p`. -/
 theorem coreRot_orderDividing (hf : Preperiodic m p f) : OrderDividing p (coreRot f m) := by
