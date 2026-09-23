@@ -16,6 +16,8 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
+  issues: write
 
 concurrency:
   group: lean-ci-${{ github.ref }}
@@ -28,12 +30,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: lake exe cache get + lake build (lean/)
+      - name: Install toolchain + lake exe cache get (lean/)
         uses: leanprover/lean-action@v1
         with:
           lake-package-directory: lean
           use-mathlib-cache: true
+          build: false
           test: false
+
+      - name: lake build (lean/)
+        working-directory: lean
+        run: |
+          set -o pipefail
+          lake build 2>&1 | tee "$RUNNER_TEMP/build.log"
 
       - name: No sorry in the Lean sources
         working-directory: lean
@@ -50,7 +59,7 @@ jobs:
         working-directory: lean
         run: |
           set -euo pipefail
-          lake env lean Audit.lean | tee "$RUNNER_TEMP/audit.out"
+          lake env lean Audit.lean 2>&1 | tee "$RUNNER_TEMP/audit.out"
           n=$(grep -c 'depends on axioms' "$RUNNER_TEMP/audit.out")
           echo "audited declarations: $n"
           test "$n" -gt 0
@@ -67,8 +76,8 @@ jobs:
         working-directory: lean
         run: |
           set -euo pipefail
-          lake build FiniteOrderTM.QueryGame
-          lake env lean AuditQueryGame.lean | tee "$RUNNER_TEMP/auditqg.out"
+          lake build FiniteOrderTM.QueryGame 2>&1 | tee "$RUNNER_TEMP/buildqg.log"
+          lake env lean AuditQueryGame.lean 2>&1 | tee "$RUNNER_TEMP/auditqg.out"
           n=$(grep -c 'depends on axioms' "$RUNNER_TEMP/auditqg.out")
           echo "audited declarations: $n"
           test "$n" -eq 8
@@ -80,3 +89,21 @@ jobs:
             exit 1
           fi
           echo "OK: standard axioms plus Lean.ofReduceBool (native_decide) only"
+
+      - name: Report Lean errors on the PR (on failure)
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "### Lean CI failed on ${{ github.sha }}"
+            echo
+            echo '```'
+            for f in "$RUNNER_TEMP"/build.log "$RUNNER_TEMP"/audit.out "$RUNNER_TEMP"/buildqg.log "$RUNNER_TEMP"/auditqg.out; do
+              [ -f "$f" ] || continue
+              echo "== $(basename "$f") =="
+              grep -nE '^(error|warning)|error:|unknown (constant|identifier)|unsolved goals|sorry' -A14 "$f" | head -c 55000 || true
+            done
+            echo '```'
+          } > "$RUNNER_TEMP/comment.md"
+          gh pr comment "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --body-file "$RUNNER_TEMP/comment.md"
