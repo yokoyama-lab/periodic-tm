@@ -1,0 +1,68 @@
+name: CI
+
+# Builds the Lean 4 / mathlib development in `lean/` and runs its axiom audit,
+# following the build instructions in README.md and lean/README.md:
+#   cd lean && lake exe cache get && lake build     (done by lean-action)
+#   lake env lean Audit.lean                        (axiom audit)
+# Toolchain comes from lean/lean-toolchain (leanprover/lean4:v4.30.0); the
+# mathlib v4.30.0 oleans are fetched with `lake exe cache get`.
+#
+# The Python files at the repository root, in invcomp/, research/ and themes/
+# are research prototypes without a test suite (no test_*.py / unittest /
+# pytest), so there is no Python job.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: lake exe cache get + lake build (lean/)
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: lean
+          use-mathlib-cache: true
+          test: false
+
+      - name: No sorry in the Lean sources
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          # README promises a sorry-free development; comments mentioning
+          # `sorry` in backticks are allowed, proof-level `sorry` is not.
+          if grep -rnE '\bsorry\b' --include='*.lean' FiniteOrderTM FiniteOrderTM.lean \
+               | grep -vE '`sorry`|^\S+:[0-9]+:\s*(--|/-|\*|\|)' ; then
+            echo "::error::found sorry in the Lean sources"
+            exit 1
+          fi
+          echo "OK: no sorry"
+
+      - name: Axiom audit (lake env lean Audit.lean)
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          lake env lean Audit.lean | tee "$RUNNER_TEMP/audit.out"
+          n=$(grep -c 'depends on axioms' "$RUNNER_TEMP/audit.out")
+          echo "audited declarations: $n"
+          test "$n" -gt 0
+          extra=$(grep -oE 'depends on axioms: \[[^]]*\]' "$RUNNER_TEMP/audit.out" \
+                  | sed -E 's/.*\[(.*)\]/\1/' | tr ',' '\n' | sed 's/^ *//' | grep -v '^$' \
+                  | grep -vxE 'propext|Classical\.choice|Quot\.sound' || true)
+          if grep -q 'sorryAx' "$RUNNER_TEMP/audit.out" || [ -n "$extra" ]; then
+            echo "::error::non-standard axioms used: ${extra:-sorryAx}"
+            exit 1
+          fi
+          echo "OK: only propext / Classical.choice / Quot.sound"
