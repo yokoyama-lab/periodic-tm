@@ -18,6 +18,12 @@ Theorems with `sorry` are marked below; all others are fully mechanised.
 import FiniteOrderTM
 
 -- decomposition theory
+-- Headline theorem of the locally-finite note (research notes Theorem 4.1;
+-- overleaf 2026_locally_finite_note §4): every pointwise-periodic map on an
+-- arbitrary type is a product of two involutions.  Classical: the per-orbit
+-- base point is `Quotient.out`, so `Classical.choice` is expected here.
+#print axioms PeriodicTM.locallyFinite_eq_two_involutions
+#print axioms PeriodicTM.exists_two_involutions_of_locallyFinite
 #print axioms PeriodicTM.finite_order_eq_two_involutions
 #print axioms PeriodicTM.index_one_decomp
 -- #3: dihedral / ℤ-n symmetry (inverse = same two involutions reversed; time symmetry)
